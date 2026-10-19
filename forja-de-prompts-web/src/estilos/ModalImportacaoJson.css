@@ -1,0 +1,30 @@
+/* =========================================================
+   ESTILIZAÇÃO DO MODAL DE IMPORTAÇÃO DE JSON
+   ========================================================= */
+.modal-conteudo-forja-json {
+  background: rgba(11, 15, 25, 0.97) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(249, 115, 22, 0.35) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.85), 0 0 25px rgba(249, 115, 22, 0.15) !important;
+  color: #f3f4f6 !important;
+}
+
+.formulario-input-json {
+  width: 100% !important;
+  background-color: rgba(5, 8, 15, 0.85) !important;
+  border: 1px solid #374151 !important;
+  color: #38bdf8 !important; /* Texto em tom ciano técnico para JSON */
+  border-radius: 0.5rem !important;
+  padding: 0.85rem 1rem !important;
+  font-family: monospace !important;
+  font-size: 0.88rem !important;
+  box-sizing: border-box !important;
+}
+
+.formulario-input-json:focus {
+  background-color: rgba(5, 8, 15, 0.95) !important;
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 0.25rem rgba(249, 115, 22, 0.25) !important;
+  color: #38bdf8 !important;
+}

@@ -1,0 +1,14 @@
+# Dependências
+node_modules/
+
+# Variáveis de Ambiente (MUITO IMPORTANTE NÃO SUBIR O .ENV)
+.env
+
+# Pasta de uploads locais
+uploads_forja/
+arquivos/
+
+# Logs e arquivos de sistema
+npm-debug.log
+yarn-error.log
+.DS_Store
