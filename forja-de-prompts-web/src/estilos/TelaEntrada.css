@@ -37,6 +37,7 @@ body{
   justify-content: space-between;
   height: 100%;
   box-sizing: border-box;
+  margin-bottom: 15px;
 }
 
 .cartao-projeto-forja:hover {

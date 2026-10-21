@@ -292,9 +292,9 @@ export default function TelaIdentidadeVisual({ projeto, aoSalvar, aoVoltar, aoAb
               <div className="col-12 col-md-6">
                 <div className="grupo-campo-iv">
                   <label className="form-label">Tipografia (Fontes)</label>
-                  <input
-                    type="text"
+                  <textarea
                     className="form-control input-iv-dark"
+                    rows="5"
                     placeholder="Ex: Inter, Montserrat, Serifadas para Títulos"
                     value={tipografia}
                     onChange={(e) => definirTipografia(e.target.value)}
@@ -305,9 +305,9 @@ export default function TelaIdentidadeVisual({ projeto, aoSalvar, aoVoltar, aoAb
               <div className="col-12 col-md-6">
                 <div className="grupo-campo-iv">
                   <label className="form-label">Tom de Voz</label>
-                  <input
-                    type="text"
+                  <textarea
                     className="form-control input-iv-dark"
+                    rows="5"
                     placeholder="Ex: Didático, técnico, direto e descontraído"
                     value={tomDeVoz}
                     onChange={(e) => definirTomDeVoz(e.target.value)}
@@ -320,7 +320,7 @@ export default function TelaIdentidadeVisual({ projeto, aoSalvar, aoVoltar, aoAb
                   <label className="form-label">Estilo Visual Detalhado</label>
                   <textarea
                     className="form-control input-iv-dark"
-                    rows="3"
+                    rows="5"
                     placeholder="Ex: Utilizar um estilo minimalista, focado em linhas retas, com grande contraste entre texto e fundo."
                     value={estiloVisual}
                     onChange={(e) => definirEstiloVisual(e.target.value)}

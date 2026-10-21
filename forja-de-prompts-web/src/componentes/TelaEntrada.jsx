@@ -148,7 +148,7 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
         {/* GRADE DE PROJETOS */}
         <div className="row grade-projetos">
           {listaProjetos.map((proj) => (
-            <div key={proj.id} className="col-12 mb-4">
+            <div key={proj.id} className="col-12 mb-4" style={{marginBotton: '15px'}}>
               <div className="cartao-projeto-forja">
                 
                 <div className="conteudo-principal-cartao" onClick={() => aoSelecionarProjeto(proj)}>

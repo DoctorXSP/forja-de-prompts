@@ -206,7 +206,7 @@ export default function TelaEdicaoProjeto({ projeto, aoSalvar, aoVoltar }) {
                   <label className="form-label">Objetivo Geral</label>
                   <textarea 
                     className="form-control formulario-input-dark" 
-                    rows="3"
+                    rows="5"
                     value={objetivo}
                     onChange={(e) => definirObjetivo(e.target.value)}
                   />
@@ -216,9 +216,9 @@ export default function TelaEdicaoProjeto({ projeto, aoSalvar, aoVoltar }) {
               <div className="col-12 col-md-6">
                 <div className="grupo-campo-forja">
                   <label className="form-label">Público-Alvo</label>
-                  <input 
-                    type="text" 
+                  <textarea 
                     className="form-control formulario-input-dark" 
+                    rows="5"
                     value={publicoAlvo}
                     onChange={(e) => definirPublicoAlvo(e.target.value)}
                   />
@@ -228,9 +228,9 @@ export default function TelaEdicaoProjeto({ projeto, aoSalvar, aoVoltar }) {
               <div className="col-12 col-md-6">
                 <div className="grupo-campo-forja">
                   <label className="form-label">Persona da IA</label>
-                  <input 
-                    type="text" 
+                  <textarea 
                     className="form-control formulario-input-dark" 
+                    rows="5" 
                     value={persona}
                     onChange={(e) => definirPersona(e.target.value)}
                   />
@@ -242,7 +242,7 @@ export default function TelaEdicaoProjeto({ projeto, aoSalvar, aoVoltar }) {
                   <label className="form-label">Resultado Esperado</label>
                   <textarea 
                     className="form-control formulario-input-dark" 
-                    rows="2"
+                    rows="5"
                     value={resultadoEsperado}
                     onChange={(e) => definirResultadoEsperado(e.target.value)}
                   />
