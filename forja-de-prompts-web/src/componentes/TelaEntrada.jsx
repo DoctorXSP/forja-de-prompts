@@ -70,6 +70,22 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
     }
   }
 
+  /**
+   * Regista o acesso ao projeto no backend e, em seguida, abre o projeto.
+   */
+  async function acessarProjeto(proj) {
+    try {
+      // Avisa o backend que o projeto foi acessado para atualizar a data/hora
+      await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos/${proj.id}/acesso`, {
+        method: 'PATCH'
+      });
+    } catch (err) {
+      console.error('Erro ao registar último acesso:', err);
+    }
+    // Chama a função original para navegar para o projeto
+    aoSelecionarProjeto(proj);
+  }
+
   function obterIconeTipo(tipo) {
     switch (tipo) {
       case 'DESENVOLVIMENTO': return <Code size={22} style={{ color: '#06b6d4' }} />;
@@ -151,7 +167,8 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
             <div key={proj.id} className="col-12 mb-4" style={{marginBotton: '15px'}}>
               <div className="cartao-projeto-forja">
                 
-                <div className="conteudo-principal-cartao" onClick={() => aoSelecionarProjeto(proj)}>
+                {/* Alterado para chamar acessarProjeto */}
+                <div className="conteudo-principal-cartao" onClick={() => acessarProjeto(proj)}>
                   <div className="moldura-logo-cartao">
                     {/* Imagem carregada via variável global de rede */}
                     {proj.logo_url ? (
@@ -177,9 +194,10 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
                 </div>
 
                 <div className="rodape-cartao-projeto">
+                  {/* Alterado para chamar acessarProjeto */}
                   <button 
                     className="btn btn-sm botao-acao-acessar d-flex align-items-center gap-1"
-                    onClick={() => aoSelecionarProjeto(proj)}
+                    onClick={() => acessarProjeto(proj)}
                   >
                     <span>Acessar Projeto</span> <ArrowRight size={14} />
                   </button>

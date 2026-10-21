@@ -59,7 +59,7 @@ const enderecoIpLocal = obterEnderecoIpLocal();
 // Define a lista de origens permitidas lendo do arquivo .env ou definindo padrões locais
 const listaOrigensPermitidas = process.env.CORS_ORIGENS
   ? process.env.CORS_ORIGENS.split(',').map((origem) => origem.trim())
-  : ['http://localhost:5173', 'http://localhost:3000'];
+  : ['http://localhost:5173', 'http://localhost:3000', 'https://forja.emersonsilv.win', 'http://192.168.0.16:5173'];
 
 // Configura o middleware CORS na aplicação Express com regras customizadas de validação de origem
 app.use(
@@ -147,10 +147,10 @@ let textoStatusBanco = '⏳ Aguardando conexão...';
 
 // Cria a conexão com o banco de dados MySQL utilizando as credenciais definidas no .env ou padrões
 const db = mysql.createConnection({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'admin',
-  password: process.env.DB_PASSWORD || 'admin@123',
-  database: process.env.DB_NAME || 'forja_de_prompts_db',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   port: process.env.DB_PORT || 3306
 });
 
@@ -174,7 +174,7 @@ function conectarBancoDeDados(callbackFinal) {
       if (!erroQuery && resultado && resultado.length > 0) {
         nomeBaseAtiva = resultado[0].base_atual || process.env.DB_NAME || 'forja_de_prompts_db';
       } else {
-        nomeBaseAtiva = process.env.DB_NAME || 'forja_de_prompts_db';
+        nomeBaseAtiva = process.env.DB_NAME ;
       }
       // Atualiza o status indicando sucesso na conexão
       textoStatusBanco = '✅ Conectado e Operacional';
@@ -644,6 +644,20 @@ app.delete('/projetos/:id', (req, res) => {
   });
 });
 
+// =========================================================================
+// NOVA ROTA ADICIONADA: Atualiza a data e hora do último acesso ao projeto
+// =========================================================================
+app.patch('/projetos/:id/acesso', (req, res) => {
+  const { id } = req.params;
+  db.query('UPDATE projetos SET ultimo_acesso = NOW() WHERE id = ?', [id], (erro) => {
+    if (erro) {
+      console.error('Erro ao registrar acesso do projeto:', erro);
+      return res.status(500).json({ mensagem: 'Erro ao registrar acesso.', erro });
+    }
+    res.json({ mensagem: 'Acesso registrado com sucesso!' });
+  });
+});
+
 // Define a rota GET para listar todos os projetos, permitindo filtros por tipo e perfil de usuário logado
 app.get('/projetos', (req, res) => {
   const { tipo_projeto, perfil_logado, usuario_logado_id } = req.query;
@@ -675,8 +689,10 @@ app.get('/projetos', (req, res) => {
     parametros.push(usuario_logado_id);
   }
 
-  // Ordena os resultados pelos projetos atualizados mais recentemente
-  sql += ' ORDER BY p.data_atualizacao DESC';
+  // =========================================================================
+  // ROTA ATUALIZADA: Ordena primeiro pelo último acesso e depois pela data de atualização
+  // =========================================================================
+  sql += ' ORDER BY p.ultimo_acesso DESC, p.data_atualizacao DESC';
 
   // Executa a consulta no banco de dados
   db.query(sql, parametros, (erro, resultados) => {
