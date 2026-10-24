@@ -18,29 +18,13 @@ import { CONFIG_REDE } from './config';
  * -------------------------------------------------------------------------------------
  * Permite importar lotes de memórias e prompts gerados por IAs externas através 
  * de um objeto JSON.
- * 
- * Props recebidas:
- * @param {Object} projeto - Dados do projeto atual (usado para obter o ID do projeto).
- * @param {Function} aoVoltar - Callback para cancelar a ação e regressar ao painel.
- * @param {Function} aoImportarSucesso - Callback para avisar o componente pai que deve recarregar a lista.
  */
 export default function TelaImportacaoJson({ projeto, aoVoltar, aoImportarSucesso }) {
   
-  // =====================================================================================
-  // ESTADOS DO COMPONENTE
-  // =====================================================================================
-  // Armazena a string bruta colada pelo utilizador na área de texto
   const [conteudoJson, definirConteudoJson] = useState('');
-  
-  // Bloqueia o botão de envio para evitar submissões duplas enquanto a API responde
   const [importando, definirImportando] = useState(false);
-  
-  // Alterna a visibilidade do bloco de ajuda que contém o modelo JSON
   const [mostrarExemplo, definirMostrarExemplo] = useState(false);
 
-  // =====================================================================================
-  // PROMPT DE INSTRUÇÃO PARA A IA (BLINDADO E MAIS ESPECÍFICO)
-  // =====================================================================================
   const promptInstrucaoIA = `Por favor, analise as nossas últimas interações e prompts desta conversa.
 Resuma os pontos principais e extraia os contextos, regras ou soluções que criamos.
 Em seguida, formate essas informações ESTRITAMENTE em um objeto JSON válido, utilizando a estrutura exata abaixo.
@@ -68,73 +52,78 @@ Estrutura exigida:
   ]
 }`;
 
-  /**
-   * FUNÇÃO: lidarComSubmissao (Anteriormente handleSubmit)
-   * -------------------------------------------------------------------------------------
-   * Interceta a submissão do formulário, valida a sintaxe do JSON e faz a chamada à API
-   * utilizando a rota global CONFIG_REDE.
-   */
   async function lidarComSubmissao(e) {
     e.preventDefault(); 
     
     if (!conteudoJson.trim()) return; 
     
     definirImportando(true); 
+    let objetoJson = null;
 
+    // =========================================================================
+    // PASSO 1: LIMPEZA E CONVERSÃO DO JSON (FRONTEND)
+    // =========================================================================
     try {
-      // DEFESA DE CÓDIGO BLINDADA (NOVA ABORDAGEM):
-      // Localiza exatamente onde começa e onde termina o bloco JSON.
-      // Se o usuário ou a IA copiar lixo antes ou depois (ex: "Aqui está o JSON", ou blocos markdown), 
-      // o código vai simplesmente ignorar tudo e pegar apenas o miolo útil.
       let jsonLimpo = conteudoJson;
+
+      // DEFESA 1: Remove "Espaços Invisíveis" (NBSP) e caracteres Zero-Width que 
+      // vêm nas cópias de navegadores e IAs e fazem o JSON.parse quebrar.
+      jsonLimpo = jsonLimpo.replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, ' ');
+
+      // DEFESA 2: Isola estritamente o conteúdo que está entre as chaves principais,
+      // ignorando markdowns ou textos como "Aqui está o seu JSON:"
       const primeiroIndice = jsonLimpo.indexOf('{');
       const ultimoIndice = jsonLimpo.lastIndexOf('}');
-
+      
       if (primeiroIndice !== -1 && ultimoIndice !== -1 && ultimoIndice > primeiroIndice) {
-        // Corta e extrai estritamente o bloco entre a primeira e a última chave
         jsonLimpo = jsonLimpo.substring(primeiroIndice, ultimoIndice + 1);
       }
 
-      // 1. Converte a string num Objeto JavaScript nativo
-      const objetoJson = JSON.parse(jsonLimpo);
-      
-      // 2. Chamada à API utilizando a configuração global de rede
+      objetoJson = JSON.parse(jsonLimpo);
+    } catch (errParse) {
+      definirImportando(false);
+      console.error('Erro detalhado no Parse do JSON:', errParse);
+      return alert('ERRO NO TEXTO (FRONTEND): O texto contém erros estruturais reais (ex: aspas faltando, vírgulas sobrando). Veja o console (F12) para detalhes.');
+    }
+
+    // =========================================================================
+    // PASSO 2: ENVIO PARA A API E TRATAMENTO DA RESPOSTA (BACKEND)
+    // =========================================================================
+    try {
       const res = await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos/${projeto.id}/importar-json`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(objetoJson)
       });
       
+      // Verifica se o backend travou e devolveu uma tela de erro HTML em vez de JSON
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const erroTexto = await res.text();
+        console.error('O servidor retornou erro fatal (HTML/Texto):', erroTexto);
+        definirImportando(false);
+        return alert('ERRO NO SERVIDOR: O backend falhou ao processar a importação. Verifique os logs do servidor Node.');
+      }
+
       const resultado = await res.json();
 
-      // 3. Processamento da resposta do servidor
       if (res.ok) {
         alert(resultado.mensagem || 'Prompts importados com sucesso!');
         definirConteudoJson(''); 
-        
-        // Avisa o Painel Principal para recarregar as memórias
         if (aoImportarSucesso) aoImportarSucesso(); 
-        
         aoVoltar(); 
       } else {
         alert(resultado.mensagem || 'Erro ao importar JSON no servidor.');
       }
       
-    } catch (err) {
-      if (err instanceof SyntaxError) {
-        alert('Erro: O texto inserido não pôde ser lido pelo sistema. A IA provavelmente gerou aspas duplas sem escapar dentro do texto ou quebras de linha inválidas.');
-        console.error('Detalhes do erro JSON:', err);
-      } else {
-        alert('Erro de ligação ao tentar conectar com a API.');
-      }
+    } catch (errFetch) {
+      console.error('Erro de requisição:', errFetch);
+      alert('Erro de conexão com a API do servidor.');
     } finally {
       definirImportando(false);
     }
   }
 
-  // =====================================================================================
-  // RENDERIZAÇÃO DA INTERFACE (JSX)
-  // =====================================================================================
   return (
     <div className="painel-workspace">
       
