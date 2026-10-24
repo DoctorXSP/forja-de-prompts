@@ -9,7 +9,7 @@ import {
   Flame, ArrowLeft, Archive, CheckCircle2, 
   Sparkles, ToggleLeft, ToggleRight, Edit3,
   Code, Megaphone, Users, GraduationCap, Folder, Image as ImageIcon,
-  Palette, Music, Video, Eye, Upload, Edit 
+  Palette, Music, Video, Eye, Upload, Edit, Trash2, PlusCircle, RefreshCw 
 } from 'lucide-react';
 
 // Importa os subcomponentes (telas e modais) que serão renderizados dentro deste painel
@@ -19,6 +19,7 @@ import GaleriaIdentidadeVisual, { ModalVisualizadorMidia } from './GaleriaIdenti
 import TelaImportacaoJson from './TelaImportacaoJson';
 import TelaGeradorPrompt from './TelaGeradorPrompt';
 import TelaEdicaoMemoria from './TelaEdicaoMemoria';
+import TelaCadastroMemoria from './TelaCadastroMemoria'; // NOVO COMPONENTE IMPORTADO PARA O CADASTRO MANUAL
 
 // Importa as folhas de estilo CSS específicas do painel principal e da galeria
 import '../estilos/PainelPrincipal.css';
@@ -38,7 +39,7 @@ import { CONFIG_REDE } from './config';
  * Possui lógica interna para abas (Contexto vs Solução) e um botão "Mais detalhes"
  * que só aparece se o texto for muito longo.
  */
-function CartaoMemoriaItem({ mem, alternarStatusMemoria, moverParaArquivoMorto, aoIniciarEdicao }) {
+function CartaoMemoriaItem({ mem, alternarStatusMemoria, moverParaArquivoMorto, aoIniciarEdicao, aoExcluir }) {
   // Estado local da aba ativa neste cartão específico
   const [abaInterna, definirAbaInterna] = useState('CONTEXTO'); 
   // Controla se o texto está expandido para mostrar tudo
@@ -146,6 +147,21 @@ function CartaoMemoriaItem({ mem, alternarStatusMemoria, moverParaArquivoMorto, 
           >
             <Edit size={12} /> Editar
           </button>
+          
+          {/* Botão de Excluir estilizado com a classe botao-aba-quente */}
+          <button 
+            type="button" 
+            className="btn btn-sm botao-aba-quente py-0 px-2 d-inline-flex align-items-center gap-1"
+            style={{ fontSize: '0.75rem', margin: '15px', marginLeft: '0' }}
+            onClick={() => {
+              if (window.confirm("Tem certeza que deseja excluir permanentemente esta memória?")) {
+                aoExcluir(mem.id);
+              }
+            }}
+            title="Excluir memória"
+          >
+            <Trash2 size={12} /> Excluir
+          </button>
         </div>
         
         <button type="button" className="btn btn-sm btn-link botao-aba-arquivo text-decoration-none p-0 fw-semibold" onClick={() => moverParaArquivoMorto(mem.id, mem.esta_arquivado)}>
@@ -244,6 +260,7 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
   const [modoGaleriaIdentidade, definirModoGaleriaIdentidade] = useState(false);
   const [modoTelaImportacaoJson, definirModoTelaImportacaoJson] = useState(false);
   const [modoTelaGeradorPrompt, definirModoTelaGeradorPrompt] = useState(false);
+  const [modoTelaCadastroMemoria, definirModoTelaCadastroMemoria] = useState(false); // NOVO ESTADO DE CADASTRO
   const [memoriaEmEdicao, definirMemoriaEmEdicao] = useState(null);
 
   // =====================================================================================
@@ -414,6 +431,22 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     }
   }
 
+  // NOVA FUNÇÃO: Deleta uma memória chamando a API do backend
+  async function excluirMemoria(idMemoria) {
+    try {
+      const res = await fetch(`${CONFIG_REDE.URL_BACKEND}/memorias/${idMemoria}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        carregarDadosWorkspace(); // Atualiza a lista na interface após a exclusão
+      } else {
+        alert('Erro ao excluir memória no servidor.');
+      }
+    } catch (err) {
+      alert('Erro de conexão ao excluir memória.');
+    }
+  }
+
   /**
    * ENVIO DE FICHEIROS MISTOS: Utiliza a interface nativa FormData para agrupar 
    * o ficheiro binário (ficheiro físico) com texto simples (legenda, booleano de IA).
@@ -465,6 +498,17 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
   // =====================================================================================
   // Dependendo de qual flag estiver 'true', o componente retorna um ecrã totalmente diferente.
   // O uso de props como 'aoVoltar' permite "fechar" esse ecrã alterando o estado no componente pai.
+
+  // ROTEAMENTO PARA A TELA DE CADASTRO MANUAL (NOVO)
+  if (modoTelaCadastroMemoria) {
+    return (
+      <TelaCadastroMemoria
+        projeto={dadosProjetoAtual}
+        aoVoltar={() => definirModoTelaCadastroMemoria(false)}
+        aoSalvarSucesso={() => carregarDadosWorkspace()}
+      />
+    );
+  }
 
   if (memoriaEmEdicao) {
     return (
@@ -548,6 +592,16 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
             <button className="botao-voltar-projetos" onClick={aoVoltarParaSelecao}>
               <ArrowLeft size={18} />
               <span>Voltar aos Projetos</span>
+            </button>
+            
+            {/* NOVO BOTÃO DE ATUALIZAÇÃO MANUAL (SEMPRE RECARREGA OS DADOS SEM SAIR DA PÁGINA) */}
+            <button 
+              className="botao-voltar-projetos" 
+              onClick={() => { carregarDadosWorkspace(); recarregarProjetoAtualizado(); }}
+              title="Atualizar dados do projeto sem recarregar a página"
+            >
+              <RefreshCw size={18} />
+              <span>Atualizar</span>
             </button>
           </div>
 
@@ -696,15 +750,29 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom border-secondary">
               <h6 className="titulo-secao-coluna mb-0 border-0 pb-0">Banco de Memórias</h6>
 
-              <button 
-                type="button"
-                className="btn btn-sm botao-forja-laranja d-flex align-items-center gap-1 py-2 px-3"
-                style={{marginBottom: '15px'}}
-                onClick={() => definirModoTelaImportacaoJson(true)}
-              >
-                <Upload size={14} />
-                <span>Importar JSON de IA</span>
-              </button>
+              {/* AGRUPAMENTO DOS DOIS BOTÕES LADO A LADO */}
+              <div className="d-flex align-items-center">
+                <button 
+                  type="button"
+                  className="btn btn-sm botao-forja-laranja d-flex align-items-center gap-1 py-2 px-3"
+                  style={{marginBottom: '15px'}}
+                  onClick={() => definirModoTelaImportacaoJson(true)}
+                >
+                  <Upload size={14} />
+                  <span>Importar JSON de IA</span>
+                </button>
+
+                {/* NOVO BOTÃO DE CADASTRO MANUAL */}
+                <button 
+                  type="button"
+                  className="btn btn-sm botao-forja-laranja d-flex align-items-center gap-1 py-2 px-3"
+                  style={{marginLeft: '15px', marginBottom: '15px'}}
+                  onClick={() => definirModoTelaCadastroMemoria(true)}
+                >
+                  <PlusCircle size={14} />
+                  <span>Cadastrar Memória</span>
+                </button>
+              </div>
             </div>
 
             {/* Alternador Quente / Arquivo Morto */}
@@ -740,6 +808,7 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
                     alternarStatusMemoria={alternarStatusMemoria} 
                     moverParaArquivoMorto={moverParaArquivoMorto} 
                     aoIniciarEdicao={(memoriaAlvo) => definirMemoriaEmEdicao(memoriaAlvo)}
+                    aoExcluir={excluirMemoria}
                   /></div>
                 ))}
             </div>

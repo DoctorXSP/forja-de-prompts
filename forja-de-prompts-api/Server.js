@@ -29,6 +29,13 @@ const PORTA_SERVIDOR = process.env.PORT || 3527;
 // Define o modelo padrão do agente de IA lendo do .env
 const modeloIaPadrao = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 
+// Variavel Global para controle de Erros de Subida do Frontend
+let statusFrontend = {
+  pastaEncontrada: false,
+  mensagemErro: "Pasta 'dist' não verificada ainda.",
+  modoRodagem: "Desconhecido"
+};
+
 // ==========================================
 // FUNÇÃO PARA OBTER O ENDEREÇO IPv4 DA REDE LOCAL
 // ==========================================
@@ -90,7 +97,7 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // ==========================================
-// CONFIGURAÇÃO DE DIRETÓRIO E UPLOAD DE ANEXOS
+// CONFIGURAÇÃO DE DIRETÓRIO E UPLOAD DE ANEXOS E FRONTEND (VITE DIST)
 // ==========================================
 // Define o nome da pasta de uploads a partir do arquivo .env ou usa 'uploads' por padrão
 const nomePastaUploads = process.env.PASTA_UPLOADS || 'uploads';
@@ -105,6 +112,25 @@ if (!fs.existsSync(diretorioUploads)) {
 // Expõe a pasta de anexos estaticamente na rota /uploads e também na rota /arquivos por compatibilidade
 app.use('/uploads', express.static(diretorioUploads));
 app.use('/arquivos', express.static(diretorioUploads));
+
+// ---------------------------------------------------------
+// [NOVO] INTEGRAÇÃO DO BUILD DO REACT (VITE) E DETEÇÃO DE AMBIENTE
+// ---------------------------------------------------------
+// Define o caminho para a pasta 'dist' gerada pelo comando 'npm run build' do Vite
+const pastaBuildFrontend = path.join(__dirname, 'dist');
+
+if (fs.existsSync(pastaBuildFrontend)) {
+  // Configura o Express para servir os arquivos estáticos (HTML, JS, CSS, assets) do React
+  app.use(express.static(pastaBuildFrontend));
+  statusFrontend.pastaEncontrada = true;
+  statusFrontend.modoRodagem = "PRODUÇÃO / SERVIDOR COMPLETO";
+  statusFrontend.mensagemErro = "Nenhum erro. Rodando frontend a partir da pasta /dist local.";
+} else {
+  statusFrontend.pastaEncontrada = false;
+  statusFrontend.modoRodagem = "HOMOLOGAÇÃO / SOMENTE BACKEND";
+  statusFrontend.mensagemErro = "Pasta '/dist' NÃO EXISTE na raiz do backend. Rode 'npm run build' no Frontend se for ambiente de produção.";
+}
+// ---------------------------------------------------------
 
 // Configura o armazenamento em disco do Multer mantendo a extensão original e gerando nomes únicos para evitar conflitos
 const armazenamentoAnexos = multer.diskStorage({
@@ -146,18 +172,22 @@ let nomeBaseAtiva = 'Nenhuma';
 let textoStatusBanco = '⏳ Aguardando conexão...';
 
 // Cria a conexão com o banco de dados MySQL utilizando as credenciais definidas no .env ou padrões
-const db = mysql.createConnection({
+// ALTERADO PARA PREVENIR TRAVAMENTOS POR TEMPO DE INATIVIDADE (wait_timeout) 
+const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true, // Se não tiver conexão livre, espera
+  connectionLimit: 10,      // Limite máximo de conexões simultâneas
+  queueLimit: 0             // Sem limite para fila de espera
 });
 
 // Função responsável por estabelecer a conexão com o banco de dados MySQL e capturar o status atual
 function conectarBancoDeDados(callbackFinal) {
-  // Inicia a conexão com o banco MySQL
-  db.connect((erro) => {
+  // Inicia a conexão testando o pool do MySQL
+  db.getConnection((erro, connection) => {
     // Verifica se ocorreu algum erro ao tentar conectar
     if (erro) {
       // Atualiza as variáveis de status indicando falha na conexão
@@ -168,6 +198,9 @@ function conectarBancoDeDados(callbackFinal) {
       return;
     }
 
+    // Libera a conexão de teste de volta para o pool
+    connection.release();
+
     // Executa uma query para consultar qual é o banco de dados ativo no momento
     db.query('SELECT DATABASE() AS base_atual', (erroQuery, resultado) => {
       // Verifica se a query retornou o nome da base com sucesso
@@ -177,7 +210,7 @@ function conectarBancoDeDados(callbackFinal) {
         nomeBaseAtiva = process.env.DB_NAME ;
       }
       // Atualiza o status indicando sucesso na conexão
-      textoStatusBanco = '✅ Conectado e Operacional';
+      textoStatusBanco = '✅ Conectado e Operacional (Usando Pool)';
       // Executa o callback final informando que o processo terminou
       if (callbackFinal) callbackFinal();
     });
@@ -273,6 +306,80 @@ app.post('/login', (req, res) => {
     }
   });
 });
+
+// ==========================================
+// ROTAS DE USUÁRIOS (CRUD GERAL E EDIÇÃO)
+// ==========================================
+// Define a rota GET para listar todos os usuários (Idealmente restrito a Admin na interface)
+app.get('/usuarios', (req, res) => {
+  db.query('SELECT id, nome, login, email, perfil, data_criacao FROM usuarios', (erro, resultados) => {
+    if (erro) return res.status(500).json({ erro });
+    res.json(resultados);
+  });
+});
+
+// Define a rota POST para criar um novo usuário (Requer privilégios de criação)
+app.post('/usuarios', async (req, res) => {
+  const { nome, login, password, perfil, email } = req.body;
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    db.query('INSERT INTO usuarios (nome, login, password, perfil, email) VALUES (?, ?, ?, ?, ?)', 
+    [nome, login, hash, perfil || 'operador', email], (erro) => {
+      if (erro) return res.status(500).json({ mensagem: 'Erro ao criar usuário', erro });
+      res.status(201).json({ mensagem: 'Usuário cadastrado com sucesso!' });
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// Define a rota PUT para atualizar dados de um usuário
+app.put('/usuarios/:id', (req, res) => {
+  const { id } = req.params;
+  const { nome, email } = req.body;
+  db.query('UPDATE usuarios SET nome = ?, email = ? WHERE id = ?', [nome, email, id], (erro) => {
+    if (erro) return res.status(500).json({ erro });
+    res.json({ mensagem: 'Usuário atualizado com sucesso!' });
+  });
+});
+
+// Define a rota DELETE para excluir um usuário
+app.delete('/usuarios/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM usuarios WHERE id = ?', [id], (erro) => {
+    if (erro) return res.status(500).json({ erro });
+    res.json({ mensagem: 'Usuário deletado!' });
+  });
+});
+
+// ==========================================
+// ROTAS DE GERENCIAMENTO DE TIMES E SOLICITAÇÕES
+// ==========================================
+// Define a rota POST para criar uma solicitação de entrada no time de um projeto
+app.post('/times/solicitacao', (req, res) => {
+  const { projetoId, remetenteId, identificadorDestino } = req.body; // identificadorDestino pode ser email ou login
+
+  // Valida se os campos obrigatórios foram enviados
+  if (!projetoId || !remetenteId || !identificadorDestino) {
+    return res.status(400).json({ mensagem: 'Dados incompletos para a solicitação.' });
+  }
+
+  // Busca o usuário destino pelo email ou login informado
+  db.query('SELECT id FROM usuarios WHERE email = ? OR login = ?', [identificadorDestino, identificadorDestino], (erroBusca, resBusca) => {
+    if (erroBusca) return res.status(500).json({ erro: erroBusca });
+    if (resBusca.length === 0) return res.status(404).json({ mensagem: 'Usuário não encontrado na base de dados.' });
+
+    const destinatarioId = resBusca[0].id;
+
+    // Insere a solicitação de convite na tabela de controle
+    const sqlInsert = `INSERT INTO solicitacoes_time (projeto_id, remetente_id, destinatario_id) VALUES (?, ?, ?)`;
+    db.query(sqlInsert, [projetoId, remetenteId, destinatarioId], (erroInsert) => {
+      if (erroInsert) return res.status(500).json({ mensagem: 'Erro ao enviar solicitação para o time.', erro: erroInsert });
+      res.status(201).json({ mensagem: 'Solicitação enviada com sucesso ao usuário!' });
+    });
+  });
+});
+
 
 // ==========================================
 // ROTAS DE IDENTIDADE VISUAL (CRIAR, EDITAR E VINCULAR AO PROJETO)
@@ -658,10 +765,14 @@ app.patch('/projetos/:id/acesso', (req, res) => {
   });
 });
 
+// =========================================================================
+// [ATUALIZADO] ROTA DE LISTAGEM COM SUPORTE A TRABALHO EM EQUIPE
+// =========================================================================
 // Define a rota GET para listar todos os projetos, permitindo filtros por tipo e perfil de usuário logado
 app.get('/projetos', (req, res) => {
   const { tipo_projeto, perfil_logado, usuario_logado_id } = req.query;
-  // Monta a query base fazendo join com a tabela de identidades visuais
+  
+  // Monta a query base com um LEFT JOIN na tabela projeto_membros para descobrir o nível de acesso
   let sql = `
     SELECT p.*, 
            iv.nome AS nome_identidade, 
@@ -670,12 +781,17 @@ app.get('/projetos', (req, res) => {
            iv.cor_destaque, 
            iv.tipografia, 
            iv.estilo_visual, 
-           iv.tom_de_voz
+           iv.tom_de_voz,
+           -- Nova coluna virtual: Avalia se é o criador original ou busca o nível na tabela de membros
+           IF(p.usuario_id = ?, 'DONO', COALESCE(pm.nivel_acesso, 'NENHUM')) AS meu_nivel_acesso
     FROM projetos p
     LEFT JOIN identidades_visuais iv ON p.identidade_visual_id = iv.id
+    LEFT JOIN projeto_membros pm ON pm.projeto_id = p.id AND pm.usuario_id = ?
     WHERE 1=1
   `;
-  const parametros = [];
+  
+  // O ID do usuário logado é passado duas vezes para o IF e para o JOIN acima
+  const parametros = [usuario_logado_id, usuario_logado_id];
 
   // Adiciona filtro por tipo de projeto se fornecido
   if (tipo_projeto) {
@@ -685,13 +801,12 @@ app.get('/projetos', (req, res) => {
 
   // Restringe os projetos ao usuário logado caso o perfil não seja admin
   if (perfil_logado && perfil_logado !== 'admin' && usuario_logado_id) {
-    sql += ' AND p.usuario_id = ?';
+    // Filtro crucial: Traz o projeto APENAS se o usuário for o DONO ou se ele constar na equipe
+    sql += ' AND (p.usuario_id = ? OR pm.usuario_id IS NOT NULL)';
     parametros.push(usuario_logado_id);
   }
 
-  // =========================================================================
-  // ROTA ATUALIZADA: Ordena primeiro pelo último acesso e depois pela data de atualização
-  // =========================================================================
+  // Ordena primeiro pelo último acesso e depois pela data de atualização
   sql += ' ORDER BY p.ultimo_acesso DESC, p.data_atualizacao DESC';
 
   // Executa a consulta no banco de dados
@@ -787,7 +902,7 @@ app.post('/projetos/:projetoId/importar-json', (req, res) => {
       console.error('Erro ao importar JSON de memórias:', erro);
       return res.status(500).json({ mensagem: 'Erro ao importar JSON de memórias.', erro });
     }
-    res.json({ mensagem: `${resultado.affectedRows} memórias/prompts importados com sucesso!` });
+    res.json({ mensagem: `${resultado.affectedRows} memórias importadas com sucesso!` });
   });
 });
 
@@ -1060,6 +1175,25 @@ app.post('/forjar-prompt', (req, res) => {
   });
 });
 
+// =====================================================================
+// [NOVO] ROTA CATCH-ALL (FALLBACK) PARA O REACT ROUTER FUNCIONAR
+// =====================================================================
+if (statusFrontend.pastaEncontrada) {
+  app.get(/.*/, (req, res) => {
+    // BLINDAGEM: Verifica se as requisições não são para rotas explícitas da API. 
+    // Como voltamos para o modelo raiz (sem /api/), a lógica de tratamento é garantida pelo Express, 
+    // que só atinge este middleware se a requisição não casar com as rotas definidas acima.
+    res.sendFile(path.join(pastaBuildFrontend, 'index.html'), (err) => {
+      if (err) {
+        console.error(`[ERRO FRONTEND] Falha ao enviar o index.html:`, err);
+        statusFrontend.mensagemErro = `Erro ao ler index.html: ${err.message}`;
+        res.status(500).send("Erro no servidor: index.html do Frontend não pode ser carregado.");
+      }
+    });
+  });
+}
+// =====================================================================
+
 // ==========================================
 // INICIALIZAÇÃO DO SERVIDOR E PAINEL DO CONSOLE
 // ==========================================
@@ -1071,6 +1205,11 @@ conectarBancoDeDados(() => {
     console.log(`* Rede Local (IPv4): http://${enderecoIpLocal}:${PORTA_SERVIDOR}`);
     console.log(`* Acesso Interno   : http://localhost:${PORTA_SERVIDOR}`);
     console.log(`* Pasta de Uploads : http://localhost:${PORTA_SERVIDOR}/uploads`);
+    console.log(`=============================================================`);
+    console.log(`[AMBIENTE FRONTEND / VITE]:`);
+    console.log(`  Pasta Detectada  : ${statusFrontend.pastaEncontrada ? 'SIM ✅' : 'NÃO ❌'}`);
+    console.log(`  Ambiente Rodando : ${statusFrontend.modoRodagem}`);
+    console.log(`  Status/Erro      : ${statusFrontend.mensagemErro}`);
     console.log(`=============================================================`);
     console.log(`[BANCO DE DADOS] MYSQL:`);
     console.log(`  Host             : ${process.env.DB_HOST || 'localhost'}`);

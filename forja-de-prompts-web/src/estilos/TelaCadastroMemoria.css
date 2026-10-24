@@ -1,0 +1,86 @@
+/* =========================================================
+   ESTILIZAÇÃO DA TELA DE CADASTRO DE MEMÓRIA MANUAL
+   ========================================================= */
+.painel-workspace {
+  min-height: 100vh;
+  background-image: linear-gradient(rgba(5, 8, 15, 0.90), rgba(5, 8, 15, 0.97)), url('../assets/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: #f3f4f6;
+  display: flex;
+  flex-direction: column;
+}
+
+.formulario-input-workspace {
+  width: 100% !important;
+  background-color: rgba(5, 8, 15, 0.85) !important;
+  border: 1px solid #374151 !important;
+  color: #ffffff !important;
+  border-radius: 0.5rem !important;
+  padding: 0.8rem 1rem !important;
+  font-size: 0.92rem !important;
+  box-sizing: border-box !important;
+}
+
+.formulario-input-workspace:focus {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 0.25rem rgba(249, 115, 22, 0.25) !important;
+  color: #ffffff !important;
+}
+
+/* =========================================================
+   PADRONIZAÇÃO UNIFICADA DOS BOTÕES DE AÇÃO DO RODAPÉ
+   ========================================================= */
+
+/* Contentor flexível dos botões com espaçamento fixo de 15px */
+.rodape-botoes-edicao {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 15px !important;
+  margin-top: 1.5rem;
+}
+
+/* Classe base que unifica o formato idêntico */
+.btn-forja-padrao {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  font-size: 0.875rem !important;
+  font-weight: 700 !important;
+  padding: 0.5rem 1.25rem !important;
+  border-radius: 0.5rem !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+
+/* Botão Cinza de Cancelar */
+.btn-forja-cinza {
+  background-color: #4b5563 !important;
+  border-color: #4b5563 !important;
+  color: #ffffff !important;
+}
+
+.btn-forja-cinza:hover {
+  background-color: #374151 !important;
+  border-color: #374151 !important;
+}
+
+/* Botão Laranja de Salvar/Cadastrar */
+.btn-forja-laranja-custom {
+  background-color: #f97316 !important;
+  border-color: #f97316 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25) !important;
+}
+
+.btn-forja-laranja-custom:hover {
+  background-color: #ea580c !important;
+  border-color: #ea580c !important;
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4) !important;
+}

@@ -1,0 +1,96 @@
+.tela-cadastro-usuario-container {
+  min-height: 100vh;
+  background-image: linear-gradient(rgba(5, 8, 15, 0.9), rgba(5, 8, 15, 0.98)), url('../assets/background.jpg');
+  background-size: cover;
+  background-position: center;
+  color: #f3f4f6;
+  padding: 2rem 1rem;
+  
+  /* Centraliza o formulário no meio exato da tela */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Trava o botão Voltar colado à esquerda do Título, tudo centralizado */
+.cabecalho-cadastro-forja {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px; /* Espaço entre o botão e o título */
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.card-edicao-forja {
+  background: rgba(17, 24, 39, 0.9);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(6, 182, 212, 0.3); 
+  border-radius: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box; /* Impede que o card cresça além de 100% */
+}
+
+.grupo-campo-forja {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.25rem;
+  margin-top: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.grupo-campo-forja .form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-bottom: 0.4rem;
+}
+
+.formulario-input-dark {
+  width: 100% !important;
+  box-sizing: border-box !important; /* Corrige os inputs ultrapassando os cards */
+  background-color: rgba(5, 8, 15, 0.75) !important;
+  border: 1px solid #374151 !important;
+  color: #ffffff !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.92rem !important;
+}
+
+.formulario-input-dark:focus {
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 0 0.25rem rgba(6, 182, 212, 0.25) !important;
+}
+
+.botao-forja-laranja {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.botao-forja-laranja:hover {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.5);
+}
+
+.botao-forja-vermelho {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.botao-forja-vermelho:hover {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
