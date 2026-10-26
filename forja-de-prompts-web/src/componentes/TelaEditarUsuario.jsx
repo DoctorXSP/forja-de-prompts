@@ -40,8 +40,8 @@ export default function TelaEditarUsuario({
   aoVoltar,
   aoAtualizarUsuarioLogado
 }) {
-  // Verifica se o usuário logado possui privilégios de Administrador
-  const ehAdmin = usuarioLogado?.perfil === 'admin';
+  // Verifica se o usuário logado possui privilégios de Administrador (com verificação robusta)
+  const ehAdmin = usuarioLogado?.perfil && String(usuarioLogado.perfil).trim().toLowerCase() === 'admin';
 
   // Estados para armazenar a lista de usuários carregados e a posição atual na navegação
   const [listaUsuarios, definirListaUsuarios] = useState([]);
@@ -95,10 +95,9 @@ export default function TelaEditarUsuario({
    * O QUE FAZ:
    * Recebe um objeto `usuario` e preenche todos os campos do formulário com seus dados.
    * Também limpa os campos de nova senha, reseta o input de arquivo físico (`refInputArquivo`),
-   * gera a URL de pré-visualização da foto atual do banco e, opcionalmente, atualiza o
-   * texto exibido na barra de busca superior com o nome desse usuário.
+   * e gera a URL de pré-visualização da foto atual do banco.
    */
-  const preencherFormularioComUsuario = (usuario, atualizarTextoBusca = true) => {
+  const preencherFormularioComUsuario = (usuario) => {
     if (!usuario) return;
 
     definirIdSelecionado(usuario.id);
@@ -115,10 +114,6 @@ export default function TelaEditarUsuario({
     }
 
     definirPreviewFoto(montarUrlFotoBanco(usuario.foto_perfil));
-
-    if (atualizarTextoBusca) {
-      definirTermoBusca(usuario.nome || '');
-    }
   };
 
   // ===================================================================================
@@ -148,7 +143,7 @@ export default function TelaEditarUsuario({
             const idx = indiceInicial >= 0 ? indiceInicial : 0;
             definirIndiceAtual(idx);
             if (dados[idx]) {
-              preencherFormularioComUsuario(dados[idx], true);
+              preencherFormularioComUsuario(dados[idx]);
             }
           }
         } else if (usuarioLogado?.id) {
@@ -157,18 +152,18 @@ export default function TelaEditarUsuario({
             const meuUsuario = await resposta.json();
             definirListaUsuarios([meuUsuario]);
             definirIndiceAtual(0);
-            preencherFormularioComUsuario(meuUsuario, true);
+            preencherFormularioComUsuario(meuUsuario);
           } else {
             definirListaUsuarios([usuarioLogado]);
             definirIndiceAtual(0);
-            preencherFormularioComUsuario(usuarioLogado, true);
+            preencherFormularioComUsuario(usuarioLogado);
           }
         }
       } catch (erro) {
         console.error('Erro ao carregar dados de usuários:', erro);
         if (usuarioLogado) {
           definirListaUsuarios([usuarioLogado]);
-          preencherFormularioComUsuario(usuarioLogado, true);
+          preencherFormularioComUsuario(usuarioLogado);
         }
       } finally {
         definirCarregandoDados(false);
@@ -186,21 +181,16 @@ export default function TelaEditarUsuario({
      * FUNÇÃO INTERNA: aoClicarFora
      * O QUE FAZ:
      * Verifica se o clique do mouse ocorreu fora do elemento `refContainerBusca`.
-     * Se sim, fecha o menu suspenso (`definirMenuAberto(false)`) e restaura o texto do
-     * input de busca para o nome do usuário que está selecionado no momento.
+     * Se sim, fecha o menu suspenso (`definirMenuAberto(false)`).
      */
     const aoClicarFora = (e) => {
       if (refContainerBusca.current && !refContainerBusca.current.contains(e.target)) {
         definirMenuAberto(false);
-        const usuarioAtual = listaUsuarios[indiceAtual];
-        if (usuarioAtual) {
-          definirTermoBusca(usuarioAtual.nome);
-        }
       }
     };
     document.addEventListener('mousedown', aoClicarFora);
     return () => document.removeEventListener('mousedown', aoClicarFora);
-  }, [listaUsuarios, indiceAtual]);
+  }, []);
 
   /**
    * MEMOIZAÇÃO: usuariosFiltrados
@@ -249,14 +239,15 @@ export default function TelaEditarUsuario({
    * O QUE FAZ:
    * É acionada ao escolher um usuário na lista suspensa ou via autocompletar.
    * Localiza o índice desse usuário na `listaUsuarios`, atualiza `indiceAtual`, carrega
-   * seus dados no formulário, fecha o menu suspenso e limpa mensagens de sucesso anteriores.
+   * seus dados no formulário, limpa o termo de busca, fecha o menu suspenso e limpa mensagens.
    */
   const selecionarUsuario = (usuario) => {
     const novoIndice = listaUsuarios.findIndex((u) => Number(u.id) === Number(usuario.id));
     if (novoIndice >= 0) {
       definirIndiceAtual(novoIndice);
     }
-    preencherFormularioComUsuario(usuario, true);
+    preencherFormularioComUsuario(usuario);
+    definirTermoBusca('');
     definirMenuAberto(false);
     definirMensagemSucesso('');
   };
@@ -300,7 +291,7 @@ export default function TelaEditarUsuario({
     const novoIndice = indiceAtual + direcao;
     if (novoIndice >= 0 && novoIndice < listaUsuarios.length) {
       definirIndiceAtual(novoIndice);
-      preencherFormularioComUsuario(listaUsuarios[novoIndice], true);
+      preencherFormularioComUsuario(listaUsuarios[novoIndice]);
       definirMenuAberto(false);
       definirMensagemSucesso('');
     }
@@ -399,7 +390,6 @@ export default function TelaEditarUsuario({
         definirFotoPerfil(null);
         definirSenha('');
         definirConfirmarSenha('');
-        definirTermoBusca(usuarioAtualizado.nome);
 
         if (refInputArquivo.current) {
           refInputArquivo.current.value = '';
@@ -492,7 +482,7 @@ export default function TelaEditarUsuario({
                     <input
                       type="text"
                       className="form-control formulario-input-dark input-busca-transparente"
-                      placeholder="Digite o nome, login ou e-mail do usuário..."
+                      placeholder="Pesquisar por nome ou e-mail..."
                       value={termoBusca}
                       onFocus={() => definirMenuAberto(true)}
                       onChange={(e) => {
@@ -709,15 +699,7 @@ export default function TelaEditarUsuario({
                   value={perfil}
                   disabled
                 >
-                  {perfil === 'editor' && (
-                    <option value="editor">Editor (Pode criar projetos e times)</option>
-                  )}
-                  {perfil === 'operador' && (
-                    <option value="operador">Operador (Uso padrão)</option>
-                  )}
-                  {perfil === 'visualizador' && (
-                    <option value="visualizador">Visualizador (Apenas leitura)</option>
-                  )}
+                  <option value={perfil}>{perfil.toUpperCase()}</option>
                 </select>
               )}
             </div>
@@ -744,4 +726,4 @@ export default function TelaEditarUsuario({
       </div>
     </div>
   );
-};
+}
