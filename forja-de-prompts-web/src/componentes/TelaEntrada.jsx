@@ -249,12 +249,12 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
         
         {/* LADO ESQUERDO: Avatar e Informações do Utilizador Logado */}
         <div className="d-flex align-items-center gap-3">
-          <div className="icone-usuario-avatar" style={{ overflow: 'hidden' }}>
+          <div className="icone-usuario-avatar" style={{ overflow: 'hidden', width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#212529', border: '1px solid #495057' }}>
             {usuarioSessao?.foto_perfil ? (
               <img 
-                src={`${CONFIG_REDE.URL_BACKEND}${usuarioSessao.foto_perfil}?t=${Date.now()}`} 
+                src={`${CONFIG_REDE.URL_BACKEND}${usuarioSessao.foto_perfil.startsWith('/') ? '' : '/'}${usuarioSessao.foto_perfil}?t=${Date.now()}`} 
                 alt={usuarioSessao.nome} 
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
               />
             ) : (
               <User size={24} className="text-info" />
@@ -262,9 +262,10 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
           </div>
           <div className="d-flex flex-column">
             <span className="text-muted small lh-1 mb-1">Logado como:</span>
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center">
               <strong className="text-light fs-6 lh-1">{usuarioSessao?.nome}</strong>
-              <span className={`badge-perfil perfil-${usuarioSessao?.perfil?.toLowerCase()}`}>
+              {/* Espaçamento de 15px aplicado à badge do perfil */}
+              <span className={`badge-perfil perfil-${usuarioSessao?.perfil?.toLowerCase()}`} style={{ marginLeft: '15px' }}>
                 {usuarioSessao?.perfil}
               </span>
             </div>
