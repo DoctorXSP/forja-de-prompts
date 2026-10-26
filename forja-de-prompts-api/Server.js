@@ -319,37 +319,83 @@ app.get('/usuarios', (req, res) => {
 });
 
 // Define a rota POST para criar um novo usuário (Requer privilégios de criação)
-app.post('/usuarios', async (req, res) => {
+app.post('/usuarios', uploadAnexo.single('foto_perfil'), async (req, res) => {
   const { nome, login, password, perfil, email } = req.body;
+  const arquivoFoto = req.file;
+  const caminhoFoto = arquivoFoto ? `/uploads/${arquivoFoto.filename}` : null;
+
   try {
     const hash = await bcrypt.hash(password, 10);
-    db.query('INSERT INTO usuarios (nome, login, password, perfil, email) VALUES (?, ?, ?, ?, ?)', 
-    [nome, login, hash, perfil || 'operador', email], (erro) => {
-      if (erro) return res.status(500).json({ mensagem: 'Erro ao criar usuário', erro });
-      res.status(201).json({ mensagem: 'Usuário cadastrado com sucesso!' });
-    });
+    db.query(
+      'INSERT INTO usuarios (nome, login, password, perfil, email, foto_perfil) VALUES (?, ?, ?, ?, ?, ?)', 
+      [nome, login, hash, perfil || 'operador', email, caminhoFoto], 
+      (erro) => {
+        if (erro) {
+          console.error('Erro ao criar usuário:', erro);
+          return res.status(500).json({ mensagem: 'Erro ao criar usuário', erro });
+        }
+        res.status(201).json({ mensagem: 'Usuário cadastrado com sucesso!' });
+      }
+    );
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
 // Define a rota PUT para atualizar dados de um usuário
-app.put('/usuarios/:id', (req, res) => {
+app.put('/usuarios/:id', uploadAnexo.single('foto_perfil'), async (req, res) => {
   const { id } = req.params;
-  const { nome, email } = req.body;
-  db.query('UPDATE usuarios SET nome = ?, email = ? WHERE id = ?', [nome, email, id], (erro) => {
-    if (erro) return res.status(500).json({ erro });
-    res.json({ mensagem: 'Usuário atualizado com sucesso!' });
-  });
-});
+  const { nome, email, login, perfil, password } = req.body;
+  const arquivoFoto = req.file;
 
-// Define a rota DELETE para excluir um usuário
-app.delete('/usuarios/:id', (req, res) => {
-  const { id } = req.params;
-  db.query('DELETE FROM usuarios WHERE id = ?', [id], (erro) => {
-    if (erro) return res.status(500).json({ erro });
-    res.json({ mensagem: 'Usuário deletado!' });
-  });
+  try {
+    // Verifica se uma nova senha foi enviada para criptografá-la
+    let sqlUpdate = '';
+    let parametros = [];
+
+    const caminhoFotoNovo = arquivoFoto ? `/uploads/${arquivoFoto.filename}` : null;
+
+    if (password && password.trim() !== '') {
+      const hash = await bcrypt.hash(password, 10);
+      if (caminhoFotoNovo) {
+        sqlUpdate = 'UPDATE usuarios SET nome = ?, email = ?, login = ?, perfil = ?, password = ?, foto_perfil = ? WHERE id = ?';
+        parametros = [nome, email, login, perfil, hash, caminhoFotoNovo, id];
+      } else {
+        sqlUpdate = 'UPDATE usuarios SET nome = ?, email = ?, login = ?, perfil = ?, password = ? WHERE id = ?';
+        parametros = [nome, email, login, perfil, hash, id];
+      }
+    } else {
+      if (caminhoFotoNovo) {
+        sqlUpdate = 'UPDATE usuarios SET nome = ?, email = ?, login = ?, perfil = ?, foto_perfil = ? WHERE id = ?';
+        parametros = [nome, email, login, perfil, caminhoFotoNovo, id];
+      } else {
+        sqlUpdate = 'UPDATE usuarios SET nome = ?, email = ?, login = ?, perfil = ? WHERE id = ?';
+        parametros = [nome, email, login, perfil, id];
+      }
+    }
+
+    db.query(sqlUpdate, parametros, (erro) => {
+      if (erro) {
+        console.error('Erro ao atualizar usuário no banco:', erro);
+        return res.status(500).json({ mensagem: 'Erro ao atualizar usuário no banco.', erro });
+      }
+
+      // Retorna os dados atualizados incluindo a nova foto se houver
+      res.json({
+        mensagem: 'Usuário atualizado com sucesso!',
+        usuario: {
+          id: Number(id),
+          nome,
+          email,
+          login,
+          perfil,
+          foto_perfil: caminhoFotoNovo
+        }
+      });
+    });
+  } catch (err) {
+    res.status(500).json({ mensagem: 'Erro interno ao processar atualização.', erro: err.message });
+  }
 });
 
 // ==========================================
