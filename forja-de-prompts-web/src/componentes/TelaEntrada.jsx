@@ -1,75 +1,139 @@
+// Importa o React e os hooks essenciais:
+// - useState: para gerir estados locais da interface (lista de projetos, telas ativas, modais).
+// - useEffect: para executar ações automáticas ao carregar a página ou atualizar o usuário.
 import React, { useState, useEffect } from 'react';
+// Importa os ícones vetoriais da biblioteca 'lucide-react' para compor a interface
 import { 
   FolderPlus, Flame, ArrowRight, Code, Megaphone, 
   Users, GraduationCap, Folder, LogOut, Trash2, Edit2, Image as ImageIcon,
   UserPlus, Edit3, UserCheck, User, RefreshCw 
 } from 'lucide-react';
+
+// Importa a imagem do logotipo horizontal oficial da aplicação
 import logoHorizontal from '../assets/logo916color.png';
+
+// Importa os subcomponentes de ecrãs e modais acessíveis a partir da barra de navegação
 import TelaEdicaoProjeto from './TelaEdicaoProjeto';
 import TelaCadastroProjeto from './TelaCadastroProjeto';
 import TelaCadastroUsuario from './TelaCadastroUsuario'; 
+import TelaEditarUsuario from './TelaEditarUsuario';
+import TelaDeletarUsuario from './TelaDeletarUsuario';
+import TelaFormarTimes from './TelaFormarTimes';
+
+// Importa a folha de estilos CSS específica para o ecrã de entrada
 import '../estilos/TelaEntrada.css';
 
-// Importação da configuração de rede
+// Importação da configuração centralizada de rede (endereço do backend)
 import { CONFIG_REDE } from './config'; 
 
+/**
+ * FUNÇÃO / COMPONENTE PRINCIPAL: TelaEntrada
+ * -------------------------------------------------------------------------------------
+ * O QUE FAZ:
+ * Representa o dashboard principal pós-login da aplicação.
+ * - Exibe a barra de navegação superior (navbar) com os dados do utilizador logado e botões
+ *   de gestão de acordo com o perfil de acesso (Administrador, Editor ou Operador).
+ * - Lista todos os projetos aos quais o utilizador tem acesso num formato de cartões visuais.
+ * - Gere o roteamento interno (através de flags no estado `telaAtiva`) para abrir ecrãs de
+ *   criação/edição de projetos, gestão de utilizadores e formação de equipas.
+ */
 export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFazerLogout }) {
+  // Estados locais para gerir a sessão, lista de projetos e navegação por ecrãs
+  const [usuarioSessao, definirUsuarioSessao] = useState(usuarioLogado);
   const [listaProjetos, definirListaProjetos] = useState([]);
-  const [telaAtiva, definirTelaAtiva] = useState('LISTA'); // 'LISTA', 'CRIAR', 'EDITAR', 'CADASTRAR_USUARIO'
+  const [telaAtiva, definirTelaAtiva] = useState('LISTA'); // Valores possíveis: 'LISTA', 'CRIAR', 'EDITAR', 'CADASTRAR_USUARIO', 'EDITAR_USUARIO', 'DELETAR_USUARIO', 'FORMAR_TIMES'
   const [projetoSelecionadoEdicao, definirProjetoSelecionadoEdicao] = useState(null);
   
-  // Controle do Modal de Convite (Formar Time)
-  const [modalTimeAberto, setModalTimeAberto] = useState(false);
-  const [emailConvite, setEmailConvite] = useState('');
-  const [projetoSelecionadoParaTime, setProjetoSelecionadoParaTime] = useState('');
-
+  // Estados de controlo do modal de convite para equipas (Formar Time)
+  const [modalTimeAberto, definirModalTimeAberto] = useState(false);
+  const [emailConvite, definirEmailConvite] = useState('');
+  const [projetoSelecionadoParaTime, definirProjetoSelecionadoParaTime] = useState('');
+  
+  // Atualiza o estado da sessão sempre que a prop 'usuarioLogado' é modificada externamente
+  useEffect(() => {
+    definirUsuarioSessao(usuarioLogado);
+  }, [usuarioLogado]);
+  
+  // Carrega a lista de projetos do servidor sempre que o utilizador logado é atualizado
   useEffect(() => {
     carregarProjetos();
   }, [usuarioLogado]);
 
+  /**
+   * FUNÇÃO: carregarProjetos
+   * -----------------------------------------------------------------------------------
+   * O QUE FAZ:
+   * Faz uma requisição HTTP `GET` ao backend passando o ID e o perfil do utilizador logado
+   * (`CONFIG_REDE.URL_BACKEND/projetos`) para obter a lista filtrada de projetos autorizados
+   * e guardá-la no estado `listaProjetos`.
+   */
   async function carregarProjetos() {
     try {
-      const res = await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos?usuario_logado_id=${usuarioLogado.id}&perfil_logado=${usuarioLogado.perfil}`);
-      const dados = await res.json();
+      const resposta = await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos?usuario_logado_id=${usuarioLogado.id}&perfil_logado=${usuarioLogado.perfil}`);
+      const dados = await resposta.json();
       if (Array.isArray(dados)) {
         definirListaProjetos(dados);
       }
-    } catch (err) {
-      console.error('Erro ao carregar projetos da API:', err);
+    } catch (erro) {
+      console.error('Erro ao carregar projetos da API:', erro);
     }
   }
 
+  /**
+   * FUNÇÃO: excluirProjeto
+   * -----------------------------------------------------------------------------------
+   * O QUE FAZ:
+   * Intercepta o clique no botão de exclusão de um cartão de projeto (`e.stopPropagation()`
+   * evita acionar o clique do cartão), exibe um alerta de confirmação e envia uma requisição
+   * `DELETE` para o backend para apagar permanentemente o projeto, recarregando a lista em seguida.
+   */
   async function excluirProjeto(e, idProjeto) {
     e.stopPropagation(); 
     if (!window.confirm('Tem certeza que deseja excluir este projeto permanentemente?')) return;
 
     try {
-      const res = await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos/${idProjeto}`, { method: 'DELETE' });
-      if (res.ok) {
+      const resposta = await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos/${idProjeto}`, { method: 'DELETE' });
+      if (resposta.ok) {
         carregarProjetos();
       } else {
         alert('Erro ao excluir projeto no backend.');
       }
-    } catch (err) {
+    } catch (erro) {
       alert('Erro de conexão com a API ao tentar excluir.');
     }
   }
 
+  /**
+   * FUNÇÃO: acessarProjeto
+   * -----------------------------------------------------------------------------------
+   * O QUE FAZ:
+   * Regista o último acesso ao projeto selecionado enviando um pedido `PATCH` ao servidor
+   * (`/projetos/:id/acesso`) e, em seguida, invoca a função `aoSelecionarProjeto(proj)`
+   * recebida via props para abrir o painel principal do projeto.
+   */
   async function acessarProjeto(proj) {
     try {
       await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos/${proj.id}/acesso`, { method: 'PATCH' });
-    } catch (err) {
-      console.error('Erro ao registar último acesso:', err);
+    } catch (erro) {
+      console.error('Erro ao registar último acesso:', erro);
     }
     aoSelecionarProjeto(proj);
   }
 
+  /**
+   * FUNÇÃO: enviarSolicitacaoTime
+   * -----------------------------------------------------------------------------------
+   * O QUE FAZ:
+   * Envia um pedido HTTP `POST` para o endpoint `/times/solicitacao` do backend com o ID
+   * do projeto escolhido, o ID do utilizador remetente e o e-mail/login do destinatário
+   * para convidá-lo a integrar a equipa do projeto.
+   */
   const enviarSolicitacaoTime = async (e) => {
     e.preventDefault();
-    if(!projetoSelecionadoParaTime) return alert('Selecione um projeto primeiro.');
+    if (!projetoSelecionadoParaTime) return alert('Selecione um projeto primeiro.');
     
     try {
-      const res = await fetch(`${CONFIG_REDE.URL_BACKEND}/times/solicitacao`, {
+      const resposta = await fetch(`${CONFIG_REDE.URL_BACKEND}/times/solicitacao`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -78,19 +142,26 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
           identificadorDestino: emailConvite
         })
       });
-      const data = await res.json();
-      if(res.ok) {
-        alert(data.mensagem);
-        setModalTimeAberto(false);
-        setEmailConvite('');
+      const conteudo = await resposta.json();
+      if (resposta.ok) {
+        alert(conteudo.mensagem);
+        definirModalTimeAberto(false);
+        definirEmailConvite('');
       } else {
-        alert(data.mensagem || 'Erro ao enviar solicitação.');
+        alert(conteudo.mensagem || 'Erro ao enviar solicitação.');
       }
-    } catch (err) {
+    } catch (erro) {
       alert('Erro de conexão com a API.');
     }
   };
 
+  /**
+   * FUNÇÃO: obterIconeTipo
+   * -----------------------------------------------------------------------------------
+   * O QUE FAZ:
+   * Analisa a string do tipo de projeto e retorna o ícone vetorial correspondente da
+   * biblioteca `lucide-react` com a cor característica de cada categoria.
+   */
   function obterIconeTipo(tipo) {
     switch (tipo) {
       case 'DESENVOLVIMENTO': return <Code size={22} style={{ color: '#06b6d4' }} />;
@@ -101,7 +172,9 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
     }
   }
 
-  // ROTEAMENTO INTERNO
+  // ===================================================================================
+  // ROTEAMENTO INTERNO DE ECRÃS (SPA Approach)
+  // ===================================================================================
   if (telaAtiva === 'CRIAR') {
     return (
       <TelaCadastroProjeto 
@@ -131,33 +204,77 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
     );
   }
 
+  if (telaAtiva === 'DELETAR_USUARIO') {
+    return (
+      <TelaDeletarUsuario 
+        usuarioLogado={usuarioLogado}
+        aoVoltar={() => definirTelaAtiva('LISTA')}
+      />
+    );
+  }
+
+  if (telaAtiva === 'EDITAR_USUARIO') {
+    return (
+      <TelaEditarUsuario 
+        usuarioLogado={usuarioSessao}
+        aoVoltar={() => definirTelaAtiva('LISTA')}
+        aoAtualizarUsuarioLogado={(usuarioAtualizado) => {
+          // Atualiza o estado local da sessão para refletir a nova foto e nome na navbar instantaneamente
+          const novoObj = { ...usuarioSessao, ...usuarioAtualizado };
+          definirUsuarioSessao(novoObj);
+          // Garante a propagação na referência original se necessário
+          Object.assign(usuarioLogado, usuarioAtualizado);
+        }}
+      />
+    );
+  }
+
+  if (telaAtiva === 'FORMAR_TIMES') {
+    return (
+      <TelaFormarTimes 
+        usuarioLogado={usuarioSessao}
+        aoVoltar={() => definirTelaAtiva('LISTA')}
+      />
+    );
+  }
+
+  // ===================================================================================
+  // RENDERIZAÇÃO DA TELA PRINCIPAL (LISTA DE PROJETOS E NAVBAR)
+  // ===================================================================================
   return (
     <div className="entrada-container d-flex flex-column">
       
-      {/* NAVBAR SUPERIOR NOVA */}
+      {/* NAVBAR SUPERIOR */}
       <div className="navbar-forja-superior mb-4 container py-3 px-4">
         
-        {/* ESQUERDA: Usuário Logado */}
+        {/* LADO ESQUERDO: Avatar e Informações do Utilizador Logado */}
         <div className="d-flex align-items-center gap-3">
-          <div className="icone-usuario-avatar">
-            <User size={24} className="text-info" />
+          <div className="icone-usuario-avatar" style={{ overflow: 'hidden' }}>
+            {usuarioSessao?.foto_perfil ? (
+              <img 
+                src={`${CONFIG_REDE.URL_BACKEND}${usuarioSessao.foto_perfil}?t=${Date.now()}`} 
+                alt={usuarioSessao.nome} 
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+              />
+            ) : (
+              <User size={24} className="text-info" />
+            )}
           </div>
           <div className="d-flex flex-column">
             <span className="text-muted small lh-1 mb-1">Logado como:</span>
             <div className="d-flex align-items-center gap-2">
-              <strong className="text-light fs-6 lh-1">{usuarioLogado?.nome}</strong>
-              <span className={`badge-perfil perfil-${usuarioLogado?.perfil?.toLowerCase()}`}>
-                {usuarioLogado?.perfil}
+              <strong className="text-light fs-6 lh-1">{usuarioSessao?.nome}</strong>
+              <span className={`badge-perfil perfil-${usuarioSessao?.perfil?.toLowerCase()}`}>
+                {usuarioSessao?.perfil}
               </span>
             </div>
           </div>
         </div>
 
-        {/* DIREITA: Ações Baseadas no Perfil */}
-        {/* Utilizamos flex-wrap e margens explícitas em cada botão para garantir o espaçamento de 15px na horizontal e na vertical */}
+        {/* LADO DIREITO: Botões de Ação Dinâmicos Baseados no Perfil */}
         <div className="d-flex align-items-center flex-wrap botoes-acao-navbar">
           
-          {/* Botão Global de Atualizar para todos os usuários */}
+          {/* Botão Global de Atualizar Listagem */}
           <button 
             className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" 
             onClick={carregarProjetos}
@@ -167,49 +284,54 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
             <RefreshCw size={15} /> <span className="d-none d-md-inline">Atualizar</span>
           </button>
 
-          {/* Apenas Administradores */}
+          {/* Ações Exclusivas para Administradores */}
           {usuarioLogado?.perfil === 'admin' && (
             <>
               <button 
                 className="btn btn-sm btn-outline-info d-flex align-items-center gap-1" 
-                title="Cadastrar Usuário"
+                title="Cadastrar Utilizador"
                 onClick={() => definirTelaAtiva('CADASTRAR_USUARIO')}
                 style={{ marginRight: '15px', marginBottom: '15px' }}
               >
-                <UserPlus size={15} /> <span className="d-none d-md-inline">Cadastrar Usuário</span>
+                <UserPlus size={15} /> <span className="d-none d-md-inline">Cadastrar Utilizador</span>
               </button>
               <button 
                 className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" 
-                title="Deletar Usuário"
+                title="Deletar Utilizador"
+                onClick={() => definirTelaAtiva('DELETAR_USUARIO')}
                 style={{ marginRight: '15px', marginBottom: '15px' }}
               >
-                <Trash2 size={15} /> <span className="d-none d-md-inline">Deletar Usuário</span>
+                <Trash2 size={15} /> <span className="d-none d-md-inline">Deletar Utilizador</span>
               </button>
             </>
           )}
 
-          {/* Administradores e Editores */}
+          {/* Botão de Editar Perfil (Disponível para Admin ou Utilizador Comum) */}
+          <button 
+            className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1" 
+            title={usuarioLogado?.perfil === 'admin' ? 'Editar Utilizador' : 'Editar Meu Perfil'}
+            onClick={() => definirTelaAtiva('EDITAR_USUARIO')}
+            style={{ marginRight: '15px', marginBottom: '15px' }}
+          >
+            <Edit3 size={15} />{' '}
+            <span className="d-none d-md-inline">
+              {usuarioLogado?.perfil === 'admin' ? 'Editar Utilizador' : 'Meu Perfil'}
+            </span>
+          </button>
+
+          {/* Ações para Administradores e Editores: Formar Equipa */}
           {(usuarioLogado?.perfil === 'admin' || usuarioLogado?.perfil === 'editor') && (
-            <>
-              <button 
-                className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1" 
-                title="Editar Usuário"
-                style={{ marginRight: '15px', marginBottom: '15px' }}
-              >
-                <Edit3 size={15} /> <span className="d-none d-md-inline">Editar Usuário</span>
-              </button>
-              <button 
-                className="btn btn-sm btn-outline-success d-flex align-items-center gap-1" 
-                onClick={() => setModalTimeAberto(true)} 
-                title="Formar / Editar Time"
-                style={{ marginRight: '15px', marginBottom: '15px' }}
-              >
-                <UserCheck size={15} /> <span className="d-none d-md-inline">Formar Time</span>
-              </button>
-            </>
+            <button 
+              className="btn btn-sm btn-outline-success d-flex align-items-center gap-1" 
+              onClick={() => definirTelaAtiva('FORMAR_TIMES')} 
+              title="Formar / Editar Equipa"
+              style={{ marginRight: '15px', marginBottom: '15px' }}
+            >
+              <UserCheck size={15} /> <span className="d-none d-md-inline">Formar Equipa</span>
+            </button>
           )}
 
-          {/* EXTREMA DIREITA: Botão de Sair */}
+          {/* EXTREMA DIREITA: Botão de Terminar Sessão (Logout) */}
           <div className="divisoria-navbar" style={{ marginBottom: '15px' }}>
             <button className="btn btn-sm botao-forja-vermelho d-flex align-items-center gap-1" onClick={aoFazerLogout}>
               <LogOut size={15} /> Sair
@@ -218,10 +340,10 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
         </div>
       </div>
 
-      {/* CONTEÚDO PRINCIPAL (RESTAURADO PARA A ESTRUTURA ORIGINAL) */}
+      {/* CONTEÚDO PRINCIPAL (LISTAGEM DE PROJETOS) */}
       <div className="container flex-grow-1" style={{ maxWidth: '1350px' }}>
         
-        {/* LOGO DA FORJA RESTAURADO AQUI */}
+        {/* LOGOTIPO DA FORJA DE PROMPTS */}
         <div className="mb-4 mt-2">
           <img src={logoHorizontal} alt="Forja de Prompts" style={{ maxWidth: '280px' }} />
         </div>
@@ -234,6 +356,7 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
               Selecione um projeto existente ou crie um novo para gerenciar contextos e prompts clicando no botão ao lado.
             </p>
             
+            {/* Botão Circular Laranja para Criar Novo Projeto */}
             <button 
               className="btn botao-forja-laranja fw-bold d-flex align-items-center justify-content-center flex-shrink-0"
               onClick={() => { definirProjetoSelecionadoEdicao(null); definirTelaAtiva('CRIAR'); }}
@@ -245,12 +368,13 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
           </div>
         </div>
 
-        {/* GRADE DE PROJETOS ORIGINAL */}
+        {/* GRADE DE CARTÕES DE PROJETOS */}
         <div className="row grade-projetos">
           {listaProjetos.map((proj) => (
-            <div key={proj.id} className="col-12 mb-4" style={{marginBottom: '15px'}}>
+            <div key={proj.id} className="col-12 mb-4" style={{ marginBottom: '15px' }}>
               <div className="cartao-projeto-forja">
                 
+                {/* Corpo do Cartão (Clica para Acessar o Projeto) */}
                 <div className="conteudo-principal-cartao" onClick={() => acessarProjeto(proj)}>
                   <div className="moldura-logo-cartao">
                     {proj.logo_url ? (
@@ -275,6 +399,7 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
                   </div>
                 </div>
 
+                {/* Rodapé do Cartão com Ações de Acesso, Edição e Exclusão */}
                 <div className="rodape-cartao-projeto">
                   <button 
                     className="btn btn-sm botao-acao-acessar d-flex align-items-center gap-1"
@@ -311,6 +436,7 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
             </div>
           ))}
 
+          {/* Mensagem exibida caso não existam projetos cadastrados */}
           {listaProjetos.length === 0 && (
             <div className="col-12 text-center py-5">
               <p className="text-muted">Nenhum projeto cadastrado ainda. Clique no ícone de mais (+) ao lado para criar um novo projeto!</p>
@@ -319,30 +445,30 @@ export default function TelaEntrada({ usuarioLogado, aoSelecionarProjeto, aoFaze
         </div>
       </div>
 
-      {/* MODAL SIMPLES PARA FORMAR TIME */}
+      {/* MODAL PARA CONVIDAR / FORMAR EQUIPA */}
       {modalTimeAberto && (
         <div className="modal-overlay-forja">
           <div className="card-edicao-forja p-4 w-100" style={{ maxWidth: '500px' }}>
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h5 className="text-warning mb-0 d-flex align-items-center gap-2">
-                <UserCheck size={20} /> Formar Time
+                <UserCheck size={20} /> Formar Equipa
               </h5>
             </div>
             
             <form onSubmit={enviarSolicitacaoTime}>
               <div className="mb-3">
                 <label className="text-muted small mb-1">Selecione o Projeto</label>
-                <select className="form-select formulario-input-dark" required value={projetoSelecionadoParaTime} onChange={(e) => setProjetoSelecionadoParaTime(e.target.value)}>
+                <select className="form-select formulario-input-dark" required value={projetoSelecionadoParaTime} onChange={(e) => definirProjetoSelecionadoParaTime(e.target.value)}>
                   <option value="">-- Escolha --</option>
                   {listaProjetos.map(p => <option key={p.id} value={p.id}>{p.titulo}</option>)}
                 </select>
               </div>
               <div className="mb-4">
-                <label className="text-muted small mb-1">E-mail ou Login do Usuário</label>
-                <input type="text" className="form-control formulario-input-dark" required placeholder="ex: usuario@email.com" value={emailConvite} onChange={(e) => setEmailConvite(e.target.value)} />
+                <label className="text-muted small mb-1">E-mail ou Login do Utilizador</label>
+                <input type="text" className="form-control formulario-input-dark" required placeholder="ex: utilizador@email.com" value={emailConvite} onChange={(e) => definirEmailConvite(e.target.value)} />
               </div>
               <div className="d-flex justify-content-end gap-2">
-                <button type="button" className="btn botao-forja-vermelho" onClick={() => setModalTimeAberto(false)}>Cancelar</button>
+                <button type="button" className="btn botao-forja-vermelho" onClick={() => definirModalTimeAberto(false)}>Cancelar</button>
                 <button type="submit" className="btn botao-forja-laranja">Enviar Convite</button>
               </div>
             </form>

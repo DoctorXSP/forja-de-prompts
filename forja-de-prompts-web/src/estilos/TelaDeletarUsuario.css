@@ -1,0 +1,84 @@
+/* =========================================================
+   ESTILOS ESPECÍFICOS DA TELA DE DELETAR USUÁRIO
+   ========================================================= */
+
+.linha-card-usuario-forja {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.item-coluna-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.item-coluna-dados-usuario {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.item-coluna-email {
+  display: flex;
+  align-items: center;
+}
+
+.item-coluna-perfil {
+  display: flex;
+  align-items: center;
+}
+
+.item-coluna-acao {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Estilização exata do botão .botao-acao-editar solicitada */
+.botao-acao-editar-custom {
+  background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%) !important;
+  border: 1px solid #3b82f6 !important;
+  color: #93c5fd !important;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  margin: 15px 0;
+  font-size: 0.85rem;
+}
+
+.botao-acao-editar-custom:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%) !important;
+  color: #ffffff !important;
+}
+
+@media (min-width: 768px) {
+  .linha-card-usuario-forja {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 5px;;
+  }
+  .item-coluna-checkbox {
+    width: 45px;
+    justify-content: center;
+  }
+  .item-coluna-dados-usuario {
+    flex: 2;
+    min-width: 0;
+  }
+  .item-coluna-email {
+    flex: 2;
+    min-width: 0;
+  }
+  .item-coluna-perfil {
+    width: 120px;
+    justify-content: center;
+  }
+  .item-coluna-acao {
+    width: 60px;
+    justify-content: center;
+  }
+}

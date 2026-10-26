@@ -9,7 +9,8 @@ import {
   Flame, ArrowLeft, Archive, CheckCircle2, 
   Sparkles, ToggleLeft, ToggleRight, Edit3,
   Code, Megaphone, Users, GraduationCap, Folder, Image as ImageIcon,
-  Palette, Music, Video, Eye, Upload, Edit, Trash2, PlusCircle, RefreshCw 
+  Palette, Music, Video, Eye, Upload, Edit, Trash2, PlusCircle, RefreshCw,
+  Kanban, BookOpen
 } from 'lucide-react';
 
 // Importa os subcomponentes (telas e modais) que serão renderizados dentro deste painel
@@ -19,7 +20,9 @@ import GaleriaIdentidadeVisual, { ModalVisualizadorMidia } from './GaleriaIdenti
 import TelaImportacaoJson from './TelaImportacaoJson';
 import TelaGeradorPrompt from './TelaGeradorPrompt';
 import TelaEdicaoMemoria from './TelaEdicaoMemoria';
-import TelaCadastroMemoria from './TelaCadastroMemoria'; // NOVO COMPONENTE IMPORTADO PARA O CADASTRO MANUAL
+import TelaCadastroMemoria from './TelaCadastroMemoria';
+import TelaMissoes from './TelaMissoes';
+import TelaLivroDeBordo from './TelaLivroDeBordo'; 
 
 // Importa as folhas de estilo CSS específicas do painel principal e da galeria
 import '../estilos/PainelPrincipal.css';
@@ -33,11 +36,13 @@ import '../estilos/GaleriaIdentidadeVisual.css';
 import { CONFIG_REDE } from './config';
 
 /**
- * COMPONENTE INTERNO: CartaoMemoriaItem
+ * FUNÇÃO / COMPONENTE INTERNO: CartaoMemoriaItem
  * -------------------------------------------------------------------------------------
- * Exibe individualmente cada "Memória" (prompt/contexto) na lista.
- * Possui lógica interna para abas (Contexto vs Solução) e um botão "Mais detalhes"
- * que só aparece se o texto for muito longo.
+ * O QUE FAZ:
+ * Renderiza individualmente cada cartão de "Memória" (prompt/contexto) na coluna esquerda.
+ * Controla a alternância entre as abas internas ("Contexto / Detalhes" e "Solução / Resposta"),
+ * mede dinamicamente a altura do texto para exibir o botão "Mais detalhes" quando necessário,
+ * e dispara as ações de ativar/ignorar no prompt, editar, excluir ou arquivar a memória.
  */
 function CartaoMemoriaItem({ mem, alternarStatusMemoria, moverParaArquivoMorto, aoIniciarEdicao, aoExcluir }) {
   // Estado local da aba ativa neste cartão específico
@@ -173,10 +178,13 @@ function CartaoMemoriaItem({ mem, alternarStatusMemoria, moverParaArquivoMorto, 
 }
 
 /**
- * COMPONENTE INTERNO: CartaoAnexoItem
+ * FUNÇÃO / COMPONENTE INTERNO: CartaoAnexoItem
  * -------------------------------------------------------------------------------------
- * Apresenta ficheiros ou imagens anexadas ao projeto. Suporta redimensionamento na íntegra
- * (objectFit: 'contain') para que imagens grandes não sejam cortadas.
+ * O QUE FAZ:
+ * Renderiza individualmente cada arquivo ou imagem anexada na barra lateral direita.
+ * Exibe a pré-visualização da imagem sem cortes (objectFit: 'contain'), permite ativar ou
+ * desativar a relevância do anexo para o prompt através de um botão Toggle, e controla a
+ * expansão da legenda manual e da análise gerada pela IA (Gemini Vision).
  */
 function CartaoAnexoItem({ anexo, alternarRelevanciaAnexo }) {
   const [expandido, definirExpandido] = useState(false);
@@ -241,11 +249,14 @@ function CartaoAnexoItem({ anexo, alternarRelevanciaAnexo }) {
 }
 
 /**
- * COMPONENTE PRINCIPAL: PainelPrincipal
+ * FUNÇÃO / COMPONENTE PRINCIPAL: PainelPrincipal
  * -------------------------------------------------------------------------------------
- * Orquestra todo o workspace do projeto selecionado.
- * Em vez de utilizar bibliotecas como o React Router, este componente gere a navegação
- * com "Flags" de estado (booleanos), montando e desmontando as diferentes interfaces (ecrãs).
+ * O QUE FAZ:
+ * Gerencia todo o workspace do projeto selecionado. Controla os estados de dados (projeto,
+ * memórias, anexos, mídias da identidade visual), gerencia o roteamento interno por flags
+ * booleanas (alternando entre o Dashboard, Missões, Livro de Bordo, Edição de Projeto,
+ * Identidade Visual, Importação JSON e Gerador de Prompts) e centraliza todas as chamadas
+ * de comunicação com a API REST do backend.
  */
 export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoVoltarParaSelecao }) {
   
@@ -262,6 +273,8 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
   const [modoTelaGeradorPrompt, definirModoTelaGeradorPrompt] = useState(false);
   const [modoTelaCadastroMemoria, definirModoTelaCadastroMemoria] = useState(false); // NOVO ESTADO DE CADASTRO
   const [memoriaEmEdicao, definirMemoriaEmEdicao] = useState(null);
+  const [modoTelaMissoes, definirModoTelaMissoes] = useState(false);
+  const [modoTelaLivroDeBordo, definirModoTelaLivroDeBordo] = useState(false);
 
   // =====================================================================================
   // ESTADOS DE DADOS (MEMÓRIAS, ANEXOS E IDENTIDADE VISUAL)
@@ -314,6 +327,13 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
 
   // Listener de redimensionamento da janela: recalcula as alturas das caixas textuais
   useEffect(() => {
+    /**
+     * FUNÇÃO AUXILIAR INTERNA: verificarAlturas
+     * O QUE FAZ:
+     * Mede a altura em pixels do bloco de "Paleta de Cores" e define um limite equivalente a 1.5x
+     * dessa altura. Compara esse limite com o tamanho real do texto nos quadros de Tipografia,
+     * Tom de Voz e Estilo Visual para ativar ou ocultar o botão "Mais detalhes" de cada quadro.
+     */
     const verificarAlturas = () => {
       if (refPaletaCores.current) {
         // Usa a caixa de paleta de cores como referência de altura limite (1.5x o tamanho dela)
@@ -335,6 +355,12 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
   // FUNÇÕES DE COMUNICAÇÃO COM O BACKEND (API REST)
   // =====================================================================================
 
+  /**
+   * FUNÇÃO: carregarMidiasIdentidadeVisual
+   * O QUE FAZ:
+   * Realiza uma requisição GET ao backend buscando todas as mídias (imagens, vídeos e áudios)
+   * associadas ao ID da Identidade Visual do projeto atual e atualiza o estado `listaMidiasIdentidade`.
+   */
   async function carregarMidiasIdentidadeVisual(idIv) {
     if (!idIv) return;
     try {
@@ -346,7 +372,13 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     }
   }
 
-  // Descarrega simultaneamente as Memórias e os Anexos ligados ao ID do Projeto
+  /**
+   * FUNÇÃO: carregarDadosWorkspace
+   * O QUE FAZ:
+   * Busca no backend todas as Memórias (`GET /projetos/:id/memorias`) e todos os Anexos
+   * (`GET /projetos/:id/anexos`) vinculados ao projeto atual, atualizando os estados
+   * `listaMemorias` e `listaAnexos` que populam as colunas esquerda e direita do painel.
+   */
   async function carregarDadosWorkspace(idDoProjeto = dadosProjetoAtual.id) {
     try {
       const resMem = await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos/${idDoProjeto}/memorias`);
@@ -361,8 +393,14 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     }
   }
 
-  // Utilizada quando voltamos da edição de um projeto: busca no backend o projeto de novo 
-  // para garantir que dados como Nome e Logótipo estão atualizados na barra de topo.
+  /**
+   * FUNÇÃO: recarregarProjetoAtualizado
+   * O QUE FAZ:
+   * Consulta a lista de projetos do usuário logado no servidor (`GET /projetos`), localiza o
+   * projeto aberto atualmente pelo ID e atualiza o estado `dadosProjetoAtual` (e suas mídias de
+   * identidade visual). Garante que alterações no título, logo, objetivo ou paleta de cores
+   * apareçam imediatamente no topo do painel sem precisar recarregar a página inteira.
+   */
   async function recarregarProjetoAtualizado() {
     try {
       const res = await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos?usuario_logado_id=${usuarioLogado.id}&perfil_logado=${usuarioLogado.perfil}`);
@@ -381,6 +419,12 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     }
   }
 
+  /**
+   * FUNÇÃO: obterIconeTipo
+   * O QUE FAZ:
+   * Recebe a string da categoria do projeto (`tipo_projeto`) e retorna o componente de ícone
+   * correspondente da biblioteca `lucide-react` com sua respectiva estilização de cor.
+   */
   function obterIconeTipo(tipo) {
     switch (tipo) {
       case 'DESENVOLVIMENTO': return <Code size={22} style={{ color: '#06b6d4' }} />;
@@ -391,7 +435,13 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     }
   }
 
-  // Atualização Parcial (PATCH) - Muito mais leve que enviar o objeto inteiro num PUT
+  /**
+   * FUNÇÃO: alternarRelevanciaAnexo
+   * O QUE FAZ:
+   * Envia uma requisição parcial (`PATCH /anexos/:id/relevancia`) invertendo o valor booleano
+   * de `eh_relevante` de um anexo específico, definindo se ele deve ou não ser incluído no
+   * contexto enviado ao Agente Construtor de Prompts. Em seguida, recarrega os dados do workspace.
+   */
   async function alternarRelevanciaAnexo(idAnexo, estadoAtual) {
     try {
       await fetch(`${CONFIG_REDE.URL_BACKEND}/anexos/${idAnexo}/relevancia`, {
@@ -405,6 +455,13 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     }
   }
 
+  /**
+   * FUNÇÃO: alternarStatusMemoria
+   * O QUE FAZ:
+   * Envia uma requisição `PATCH /memorias/:id/status` para alternar se uma memória ativa
+   * deve ser considerada ("Ativo no Prompt") ou ignorada ("Ignorado no Prompt") durante a
+   * geração de novos prompts, mantendo seu estado de arquivamento inalterado.
+   */
   async function alternarStatusMemoria(idMemoria, ehRelevanteAtual, estaArquivadoAtual) {
     try {
       await fetch(`${CONFIG_REDE.URL_BACKEND}/memorias/${idMemoria}/status`, {
@@ -418,6 +475,13 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     }
   }
 
+  /**
+   * FUNÇÃO: moverParaArquivoMorto
+   * O QUE FAZ:
+   * Envia uma requisição `PATCH /memorias/:id/status` invertendo o estado `esta_arquivado` da
+   * memória, permitindo movê-la da aba "Memória Quente" para o "Arquivo Morto" ou restaurá-la
+   * de volta para a lista de memórias quentes.
+   */
   async function moverParaArquivoMorto(idMemoria, estaArquivadoAtual) {
     try {
       await fetch(`${CONFIG_REDE.URL_BACKEND}/memorias/${idMemoria}/status`, {
@@ -431,7 +495,12 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     }
   }
 
-  // NOVA FUNÇÃO: Deleta uma memória chamando a API do backend
+  /**
+   * FUNÇÃO: excluirMemoria
+   * O QUE FAZ:
+   * Envia uma requisição HTTP `DELETE /memorias/:id` ao servidor para remover permanentemente
+   * o registro da memória do banco de dados e, em caso de sucesso, atualiza a listagem na tela.
+   */
   async function excluirMemoria(idMemoria) {
     try {
       const res = await fetch(`${CONFIG_REDE.URL_BACKEND}/memorias/${idMemoria}`, {
@@ -448,8 +517,12 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
   }
 
   /**
-   * ENVIO DE FICHEIROS MISTOS: Utiliza a interface nativa FormData para agrupar 
-   * o ficheiro binário (ficheiro físico) com texto simples (legenda, booleano de IA).
+   * FUNÇÃO: enviarAnexo
+   * O QUE FAZ:
+   * Trata a submissão do formulário de upload de anexos. Agrupa o arquivo físico selecionado,
+   * o ID do projeto, a descrição manual e a opção de análise visual por IA (Gemini Vision) em
+   * um objeto `FormData` e envia via `POST /anexos/upload`. Limpa os campos e recarrega a lista
+   * após o envio.
    */
   async function enviarAnexo(e) {
     e.preventDefault();
@@ -476,6 +549,12 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     }
   }
 
+  /**
+   * FUNÇÃO: processarImportacaoJson
+   * O QUE FAZ:
+   * Recebe o objeto JSON validado na tela de importação e envia via `POST /projetos/:id/importar-json`
+   * para cadastrar múltiplas memórias em lote no banco de dados, atualizando o Banco de Memórias ao concluir.
+   */
   async function processarImportacaoJson(objetoJson) {
     const res = await fetch(`${CONFIG_REDE.URL_BACKEND}/projetos/${dadosProjetoAtual.id}/importar-json`, {
       method: 'POST',
@@ -499,7 +578,36 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
   // Dependendo de qual flag estiver 'true', o componente retorna um ecrã totalmente diferente.
   // O uso de props como 'aoVoltar' permite "fechar" esse ecrã alterando o estado no componente pai.
 
-  // ROTEAMENTO PARA A TELA DE CADASTRO MANUAL (NOVO)
+  // ROTEAMENTO PARA A TELA MISSÕES (Quadro Kanban estilo Trello)
+  if (modoTelaMissoes) {
+    return (
+      <TelaMissoes
+        projeto={dadosProjetoAtual}
+        usuarioLogado={usuarioLogado}
+        aoVoltar={() => definirModoTelaMissoes(false)}
+        aoAbrirLivroDeBordo={() => {
+          definirModoTelaMissoes(false);
+          definirModoTelaLivroDeBordo(true);
+        }}
+      />
+    );
+  }
+
+  // ROTEAMENTO PARA A TELA LIVRO DE BORDO (Histórico de missões em execução, testes ou concluídas)
+  if (modoTelaLivroDeBordo) {
+    return (
+      <TelaLivroDeBordo
+        projeto={dadosProjetoAtual}
+        aoVoltar={() => definirModoTelaLivroDeBordo(false)}
+        aoAbrirMissoes={() => {
+          definirModoTelaLivroDeBordo(false);
+          definirModoTelaMissoes(true);
+        }}
+      />
+    );
+  }
+
+  // ROTEAMENTO PARA A TELA DE CADASTRO MANUAL DE MEMÓRIA
   if (modoTelaCadastroMemoria) {
     return (
       <TelaCadastroMemoria
@@ -510,6 +618,7 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     );
   }
 
+  // ROTEAMENTO PARA A TELA DE EDIÇÃO DE MEMÓRIA EXISTENTE
   if (memoriaEmEdicao) {
     return (
       <TelaEdicaoMemoria
@@ -522,6 +631,7 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     );
   }
 
+  // ROTEAMENTO PARA A TELA DE EDIÇÃO DOS DADOS GERAIS DO PROJETO
   if (modoEdicaoProjeto) {
     return (
       <TelaEdicaoProjeto
@@ -533,6 +643,7 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     );
   }
 
+  // ROTEAMENTO PARA A GALERIA DE MÍDIAS DA IDENTIDADE VISUAL
   if (modoGaleriaIdentidade) {
     return (
       <GaleriaIdentidadeVisual
@@ -543,6 +654,7 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     );
   }
 
+  // ROTEAMENTO PARA A TELA DE CADASTRO / EDIÇÃO DE IDENTIDADE VISUAL
   if (modoTelaIdentidadeVisual) {
     return (
       <TelaIdentidadeVisual
@@ -554,6 +666,7 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     );
   }
 
+  // ROTEAMENTO PARA A TELA DE IMPORTAÇÃO DE LOTE JSON DE IAs
   if (modoTelaImportacaoJson) {
     return (
       <TelaImportacaoJson
@@ -564,6 +677,7 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
     );
   }
 
+  // ROTEAMENTO PARA A CENTRAL DE GERAÇÃO AVANÇADA DE PROMPTS
   if (modoTelaGeradorPrompt) {
     return (
       <TelaGeradorPrompt
@@ -589,12 +703,13 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
         {/* Navegação Superior */}
         <div className="linha-navegacao-topo">
           <div className="d-flex align-items-center gap-2">
+            {/* Botão para retornar à tela de seleção de projetos */}
             <button className="botao-voltar-projetos" onClick={aoVoltarParaSelecao}>
               <ArrowLeft size={18} />
               <span>Voltar aos Projetos</span>
             </button>
             
-            {/* NOVO BOTÃO DE ATUALIZAÇÃO MANUAL (SEMPRE RECARREGA OS DADOS SEM SAIR DA PÁGINA) */}
+            {/* Botão para recarregar manualmente as memórias, anexos e dados do projeto */}
             <button 
               className="botao-voltar-projetos" 
               onClick={() => { carregarDadosWorkspace(); recarregarProjetoAtualizado(); }}
@@ -602,6 +717,26 @@ export default function PainelPrincipal({ usuarioLogado, projetoSelecionado, aoV
             >
               <RefreshCw size={18} />
               <span>Atualizar</span>
+            </button>
+
+            {/* Botão que ativa a flag modoTelaMissoes para abrir o quadro Kanban de Missões */}
+            <button 
+              className="botao-voltar-projetos" 
+              onClick={() => definirModoTelaMissoes(true)}
+              title="Abrir quadro de Missões do projeto"
+            >
+              <Kanban size={18} className="text-warning" />
+              <span>Missões</span>
+            </button>
+
+            {/* Botão que ativa a flag modoTelaLivroDeBordo para abrir o histórico do projeto */}
+            <button 
+              className="botao-voltar-projetos" 
+              onClick={() => definirModoTelaLivroDeBordo(true)}
+              title="Abrir histórico de tudo que é feito no projeto"
+            >
+              <BookOpen size={18} className="text-info" />
+              <span>Livro de Bordo</span>
             </button>
           </div>
 

@@ -1,0 +1,72 @@
+/* =========================================================
+   ESTILOS ESPECÍFICOS DA TELA DE FORMAR TIMES
+   ========================================================= */
+
+.linha-card-membro-forja {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: stretch;
+}
+
+.item-membro-dados {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.item-membro-email {
+  display: flex;
+  align-items: center;
+}
+
+.item-membro-funcao {
+  display: flex;
+  align-items: center;
+}
+
+.item-membro-acoes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Botões de ação com largura idêntica e ícone perfeitamente centralizado */
+.botao-acao-membro-tabela {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 0.5rem !important;
+  padding: 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+@media (min-width: 768px) {
+  .linha-card-membro-forja {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 10px;
+  }
+  .item-membro-dados {
+    flex: 2;
+    min-width: 0;
+  }
+  .item-membro-email {
+    flex: 2;
+    min-width: 0;
+  }
+  .item-membro-funcao {
+    flex: 1.5;
+    min-width: 0;
+  }
+  .item-membro-acoes {
+    justify-content: flex-end;
+    min-width: 100px;
+  }
+}

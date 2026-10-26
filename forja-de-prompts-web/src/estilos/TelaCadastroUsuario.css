@@ -8,7 +8,7 @@
   
   /* Centraliza o formulário no meio exato da tela */
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -93,4 +93,206 @@
 .botao-forja-vermelho:hover {
   background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+/* =========================================================
+   ESTILOS FALTANTES: MOLDURA E PRÉVIA DA FOTO DE PERFIL
+   ========================================================= */
+.moldura-logo-cartao {
+  width: 110px;
+  height: 150px;
+  margin: 15px auto; /* Centraliza a moldura no meio do card */
+  border-radius: 50%; /* Deixa no formato circular de avatar */
+  background-color: rgba(5, 8, 15, 0.85);
+  border: 2px dashed #f97316;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.2s ease;
+}
+
+.moldura-logo-cartao:hover {
+  border-color: #f97316;
+}
+
+.imagem-logo-cartao {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Garante que a foto preencha o círculo sem achatar/esticar */
+  display: block;
+}
+
+/* Garante fundo escuro nas opções do <select> (Perfil de Acesso) */
+.formulario-input-dark option {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+/* Estiliza o botão interno "Escolher arquivo" do input type="file" */
+.formulario-input-dark::file-selector-button {
+  background-color: #1f2937;
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  margin-right: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.formulario-input-dark::file-selector-button:hover {
+  background-color: #06b6d4;
+  color: #05080f;
+}
+
+/* Mantém aparência consistente quando o botão Cadastrar estiver desabilitado (carregando) */
+.botao-forja-laranja:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+/* =========================================================
+   ESTILOS DE EDIÇÃO DE USUÁRIO: AUTOCOMPLETE, MENU CLEAN E SETAS
+   ========================================================= */
+.botao-seta-navegacao-forja {
+  background-color: rgba(5, 8, 15, 0.85);
+  border: 1px solid #374151;
+  color: #06b6d4;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.botao-seta-navegacao-forja:hover:not(:disabled) {
+  background-color: #06b6d4;
+  color: #05080f;
+  border-color: #06b6d4;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+}
+
+.botao-seta-navegacao-forja:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.wrapper-input-adivinhacao-forja {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background-color: rgba(5, 8, 15, 0.75);
+  border-radius: 0.5rem;
+}
+
+.icone-busca-forja {
+  position: absolute;
+  left: 12px;
+  color: #06b6d4;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.input-busca-transparente {
+  padding-left: 2.25rem !important;
+  padding-right: 4rem !important;
+  background-color: transparent !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* Camada de texto fantasma que "adivinha" o restante do nome digitado */
+.texto-fantasma-adivinhacao {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 4rem 0.75rem 2.25rem;
+  font-size: 0.92rem;
+  pointer-events: none;
+  z-index: 1;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.texto-fantasma-adivinhacao .parte-invisivel {
+  color: transparent;
+}
+
+.texto-fantasma-adivinhacao .parte-sugerida {
+  color: rgba(156, 163, 175, 0.45);
+}
+
+.acoes-input-busca-forja {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 3;
+}
+
+.btn-icone-limpar-forja {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.btn-icone-limpar-forja:hover {
+  color: #06b6d4;
+}
+
+/* Menu suspenso clean para seleção rápida */
+.menu-suspenso-clean-forja {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 230px;
+  overflow-y: auto;
+  background: rgba(17, 24, 39, 0.98);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  border-radius: 0.5rem;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.8);
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0;
+  z-index: 50;
+}
+
+.item-menu-suspenso-forja {
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(55, 65, 81, 0.35);
+  transition: background-color 0.15s ease;
+}
+
+.item-menu-suspenso-forja:last-child {
+  border-bottom: none;
+}
+
+.item-menu-suspenso-forja:hover,
+.item-menu-suspenso-forja.ativo {
+  background-color: rgba(6, 182, 212, 0.15);
+  border-left: 3px solid #f97316;
+}
+
+.item-menu-suspenso-vazio {
+  padding: 0.75rem 1rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
 }
