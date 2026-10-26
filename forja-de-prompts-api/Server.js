@@ -297,7 +297,8 @@ app.post('/login', (req, res) => {
           nome: usuarioEncontrado.nome,
           login: usuarioEncontrado.login,
           perfil: usuarioEncontrado.perfil,
-          email: usuarioEncontrado.email
+          email: usuarioEncontrado.email,
+          foto_perfil: usuarioEncontrado.foto_perfil
         }
       });
     } catch (erroBcrypt) {
@@ -312,9 +313,19 @@ app.post('/login', (req, res) => {
 // ==========================================
 // Define a rota GET para listar todos os usuários (Idealmente restrito a Admin na interface)
 app.get('/usuarios', (req, res) => {
-  db.query('SELECT id, nome, login, email, perfil, data_criacao FROM usuarios', (erro, resultados) => {
+  db.query('SELECT id, nome, login, email, perfil, foto_perfil, data_criacao FROM usuarios', (erro, resultados) => {
     if (erro) return res.status(500).json({ erro });
     res.json(resultados);
+  });
+});
+
+// Define a rota GET para buscar os dados de um único usuário pelo ID (usado ao abrir Meu Perfil)
+app.get('/usuarios/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('SELECT id, nome, login, email, perfil, foto_perfil, data_criacao FROM usuarios WHERE id = ?', [id], (erro, resultados) => {
+    if (erro) return res.status(500).json({ erro });
+    if (resultados.length === 0) return res.status(404).json({ mensagem: 'Usuário não encontrado.' });
+    res.json(resultados[0]);
   });
 });
 
